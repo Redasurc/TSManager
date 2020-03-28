@@ -19,21 +19,24 @@ class EventManager {
     /**
      * New channel added
      */
-    val channelAdded = EventLib<((TSChannel, TSClient)->Unit)>()
+    val channelAdded = EventLib<((TSChannel, TSClient?)->Unit)>()
 
     /**
      * Channel removed from server
      */
-    val channelRemoved = EventLib<((TSChannel, TSClient)->Unit)>()
+    val channelRemoved = EventLib<((TSChannel, TSClient?)->Unit)>()
 
     /**
      * Channel properties modified
      */
-    val channelModified = EventLib<((old: TSChannel, new: TSChannel, user: TSClient)->Unit)>()
+    val channelModified = EventLib<((old: TSChannel, new: TSChannel, user: TSClient?)->Unit)>()
 
     val clientConnected = EventLib<((user: TSClient, channel: TSChannel)->Unit)>()
-    val clientDisconnected = EventLib<((user: TSClient, fromChannel: TSChannel, DisconnectReason)->Unit)>()
-    val clientMoved = EventLib<((user: TSClient, from: TSChannel, to: TSChannel, MoveReason)->Unit)>()
+    val clientDisconnected = EventLib<((user: TSClient, fromChannel: TSChannel, DisconnectReason,
+                                        reasonMsg: String?, invoker: TSClient?)->Unit)>()
+    val clientMoved = EventLib<((user: TSClient, from: TSChannel, to: TSChannel, MoveReason,
+                                 reasonMsg: String?, invoker: TSClient?)->Unit)>()
+    val clientModified = EventLib<((old: TSClient, new: TSClient)->Unit)>()
 
 
     class EventLib<T:Function<*>>{

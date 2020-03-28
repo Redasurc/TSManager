@@ -2,7 +2,6 @@ package eu.redasurc.tsclient
 
 import com.github.manevolent.ts3j.command.CommandException
 import com.github.manevolent.ts3j.identity.LocalIdentity
-import com.github.manevolent.ts3j.protocol.socket.client.LocalTeamspeakClientSocket
 import com.github.theholywaffle.teamspeak3.TS3Config
 import com.github.theholywaffle.teamspeak3.TS3Query
 import org.slf4j.LoggerFactory
@@ -23,7 +22,7 @@ class TeamspeakClient (private val connectionSettings: ConnectionSettings) : Clo
             .setHost(connectionSettings.serverAdress)
             .setQueryPort(connectionSettings.ports.sq)
     private val sqClient = TS3Query(sqConfig)
-    private val udpClient = LocalTeamspeakClientSocket()
+    private val udpClient = CustomLocalTeamspeakClientSocket()
 
     val ts = VirtualTS(udpClient, sqClient, events)
 
@@ -76,6 +75,7 @@ class TeamspeakClient (private val connectionSettings: ConnectionSettings) : Clo
         udpClient.setIdentity(identity)
         udpClient.addListener(ts.updater)
         udpClient.nickname = "TS Bot v2.0"
+        udpClient.setClientVersion("Linux","5.0.0-beta.9 [Build: 1571949734]",  "b6ksNapJZndbf5qa1dcvqRgCdcgay0KQrnw8IYkPAXY/OvccuoJ/LUfg/a01nXbxbh45kp7h5gTk9l0L9NVPDQ==")
 
         udpClient.connect(
                 InetSocketAddress(connectionSettings.serverAdress, connectionSettings.ports.udp),
@@ -101,6 +101,7 @@ class TeamspeakClient (private val connectionSettings: ConnectionSettings) : Clo
         } catch (e: CommandException) {
             log.error("Switching channel failed", e)
         }
+        udpClient.channelCommander = true
         udpClient.subscribeAll()
     }
 
