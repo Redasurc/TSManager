@@ -38,6 +38,15 @@ class EventManager {
                                  reasonMsg: String?, invoker: TSClient?)->Unit)>()
     val clientModified = EventLib<((old: TSClient, new: TSClient)->Unit)>()
 
+    /**
+     * Triggered after a quick server refresh has been triggered
+     */
+    val quickRefresh = EventLib<(()->Unit)>()
+
+    /**
+     * Triggered after a full server refresh has been triggered
+     */
+    val fullRefresh = EventLib<(()->Unit)>()
 
     class EventLib<T:Function<*>>{
         private val list = mutableMapOf<Int, T>()

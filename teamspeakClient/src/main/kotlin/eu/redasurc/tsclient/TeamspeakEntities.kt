@@ -93,7 +93,9 @@ enum class DisconnectReason(ordinal: Int) {
     USER(8),
     CONNECTION_LOST(3),
     KICK(5),
-    BAN(6);
+    BAN(6),
+    UNKNOWN(-1);
+
     companion object {
         fun getReason(ordinal: Int): DisconnectReason {
             return when (ordinal) {
@@ -123,7 +125,9 @@ enum class JoinReason(ordinal: Int) {
 enum class MoveReason(ordinal: Int) {
     SELF(0),
     MOVED(1),
-    KICKED(4);
+    KICKED(4),
+    UNKNWON(-1);
+
     companion object {
         fun getReason(ordinal: Int): MoveReason {
             return when (ordinal) {

@@ -46,11 +46,15 @@ class VirtualTS(udpClient: LocalTeamspeakClientSocket, sqClient: TS3Query, event
         return channels[channel.parent]?:throw TSChannelNotFoundException("Parent for channel $channel.id not found")
     }
 
-    fun getClients(channel: TSChannel): List<TSClient> {
-        return getClients(channel.id)
+    fun getClients(channel: TSChannel?): List<TSClient> {
+        return channel?.run { getClients(channel.id) }?:run { listOf<TSClient>()}
     }
     fun getClients(channel: ChannelId): List<TSClient> {
         return clients.values.stream().filter { it.channel == channel }.toList()
+    }
+
+    fun getChildChannels(channel: TSChannel): List<TSChannel> {
+        return channels.values.stream().filter { it.parent == channel.id }.toList()
     }
 
 
@@ -99,9 +103,9 @@ class VirtualTS(udpClient: LocalTeamspeakClientSocket, sqClient: TS3Query, event
                 if(oldChannel == null) {
                     log.warn("DESYNC: Channel created event missed for ${newChannel.id} (${newChannel.name}), trying to fix")
                     val channelDetails = udpClient.getChannelInfo(newChannel.id)
-                    val chan = TSChannel(channelDetails.map)
+                    val chan = TSChannel(channelDetails.map.plus("cid" to "${newChannel.id}"))
                     addOrUpdateChannel(chan)
-                    // TODO: trigger join event
+                    events.channelAdded.triggerEvent { it(chan, null) }
                     continue
                 }
 
@@ -120,6 +124,7 @@ class VirtualTS(udpClient: LocalTeamspeakClientSocket, sqClient: TS3Query, event
                 log.warn("DESYNC: Channel deleted event missed for " +
                         "${channel.id} (${channel.name}), trying to fix")
                 removeChannel(channel)
+                events.channelRemoved.triggerEvent { it(channel, null) }
             }
 
             // PROCESS CLIENTS
@@ -135,8 +140,9 @@ class VirtualTS(udpClient: LocalTeamspeakClientSocket, sqClient: TS3Query, event
                 // Detect DESYNC CLIENT JOIN EVENT MISSING
                 if(oldClient == null) {
                     log.warn("DESYNC: Client join event missed for ${client.id} (${client.nickname}), trying to fix")
-                    addOrUpdateClient(TSClient(udpClient.getClientInfo(client.id).map))
-                    // TODO: trigger join event
+                    val store = TSClient(udpClient.getClientInfo(client.id).map)
+                    addOrUpdateClient(store)
+                    events.clientConnected.triggerEvent { it(store, virtualTS.getChannelForClient(store)) }
                     continue
                 }
 
@@ -145,7 +151,8 @@ class VirtualTS(udpClient: LocalTeamspeakClientSocket, sqClient: TS3Query, event
                     log.warn("DESYNC: Client ${client.nickname} (${client.id}) no longer in channel " +
                             "${oldClient.channel} but in channel ${newClient.channel}, trying to fix")
                     addOrUpdateClient(TSClient(oldClient.map.plus("cid" to newClient.channel)))
-                    // TODO: trigger channel switch event
+                    events.clientMoved.triggerEvent { it(newClient, virtualTS.getChannelForClient(oldClient),
+                            virtualTS.getChannelForClient(newClient), MoveReason.UNKNWON, null, null) }
                 }
 
                 // Detect DESYNC CLIENT RENAME UNNOTICED
@@ -153,7 +160,7 @@ class VirtualTS(udpClient: LocalTeamspeakClientSocket, sqClient: TS3Query, event
                     log.warn("DESYNC: Client ${client.nickname} (${client.id}) renamed to " +
                             "${newClient.clientNickname}, trying to fix")
                     addOrUpdateClient(TSClient(oldClient.map.plus("client_nickname" to newClient.clientNickname)))
-                    // TODO: trigger client renamed event
+                    events.clientModified.triggerEvent { it(oldClient, newClient) }
                 }
 
                 // Remove processed id from currently connected id list
@@ -169,7 +176,10 @@ class VirtualTS(udpClient: LocalTeamspeakClientSocket, sqClient: TS3Query, event
                 log.warn("DESYNC: Client disconnected event missed for " +
                         "${client.id} (${client.clientNickname}), trying to fix")
                 removeClient(client)
+                events.clientDisconnected.triggerEvent { it(client, virtualTS.getChannelForClient(client),
+                        DisconnectReason.UNKNOWN, null, null) }
             }
+            events.quickRefresh.triggerEvent { it() }
         }
 
         /**
@@ -195,6 +205,7 @@ class VirtualTS(udpClient: LocalTeamspeakClientSocket, sqClient: TS3Query, event
                     // TODO: This should be solved a little bit more graceful than with a 1 second timeout ;)
                     if(counter == 10 && !connected) {
                         connected = true
+                        events.connected.triggerEvent { it() }
                         log.info("\n\n\nConnected event!!! : \n${virtualTS.clients}\n\n")
                     }
 
@@ -279,7 +290,7 @@ class VirtualTS(udpClient: LocalTeamspeakClientSocket, sqClient: TS3Query, event
                 }
                 is ChannelCreateEvent -> {
                     val channelDetails = udpClient.getChannelInfo(event.channelId)
-                    val channel = TSChannel(channelDetails.map)
+                    val channel = TSChannel(channelDetails.map.plus("cid" to "${event.channelId}"))
                     addOrUpdateChannel(channel)
 
                     events.channelAdded.triggerEvent {
@@ -297,7 +308,7 @@ class VirtualTS(udpClient: LocalTeamspeakClientSocket, sqClient: TS3Query, event
                 is ChannelEditedEvent -> {
                     val oldChannel = handleEventHelperGetOldChannel(event.channelId, event) ?: return
                     val channelDetails = udpClient.getChannelInfo(event.channelId)
-                    val newChannel = TSChannel(channelDetails.map)
+                    val newChannel = TSChannel(channelDetails.map.plus("cid" to "${event.channelId}"))
                     addOrUpdateChannel(newChannel)
 
                     events.channelModified.triggerEvent { it(oldChannel, newChannel, virtualTS.clients[event.invokerId]) }

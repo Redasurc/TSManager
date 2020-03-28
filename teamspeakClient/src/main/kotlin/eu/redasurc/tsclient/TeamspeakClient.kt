@@ -4,6 +4,7 @@ import com.github.manevolent.ts3j.command.CommandException
 import com.github.manevolent.ts3j.identity.LocalIdentity
 import com.github.theholywaffle.teamspeak3.TS3Config
 import com.github.theholywaffle.teamspeak3.TS3Query
+import com.github.theholywaffle.teamspeak3.api.ChannelProperty
 import org.slf4j.LoggerFactory
 import java.io.Closeable
 import java.io.File
@@ -21,8 +22,8 @@ class TeamspeakClient (private val connectionSettings: ConnectionSettings) : Clo
     private val sqConfig = TS3Config()
             .setHost(connectionSettings.serverAdress)
             .setQueryPort(connectionSettings.ports.sq)
-    private val sqClient = TS3Query(sqConfig)
-    private val udpClient = CustomLocalTeamspeakClientSocket()
+    val sqClient = TS3Query(sqConfig)
+    val udpClient = CustomLocalTeamspeakClientSocket()
 
     val ts = VirtualTS(udpClient, sqClient, events)
 
@@ -37,6 +38,7 @@ class TeamspeakClient (private val connectionSettings: ConnectionSettings) : Clo
         setupClients()
         ts.updater.init()
         ts.updater.run()
+
     }
     fun stop() {
         if(!started) return
@@ -84,7 +86,6 @@ class TeamspeakClient (private val connectionSettings: ConnectionSettings) : Clo
         )
         log.info("Connecting UDP client complete, clientId: ${udpClient.clientId}")
     }
-
 
     fun setupClients() {
         val udpClientInfo = sqClient.api.getClientInfo(udpClient.clientId)

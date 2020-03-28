@@ -13,10 +13,10 @@ import kotlin.streams.toList
 abstract class ValueExtractorBase(private val map: Map<String, Any?>, private val altKey: List<String> = listOf()) {
     private val log = LoggerFactory.getLogger(this::class.java)
 
-    private fun getFromList(name: String) : Any {
-        return tryAllFormats(name)?.run { map[this]!! } ?: run {
+    private fun getFromList(name: String) : Any? {
+        return tryAllFormats(name)?.run { map[this] } ?: run {
             for (s in altKey) {
-                tryAllFormats(s)?.run { return map[this]!! }
+                tryAllFormats(s)?.run { return map[this] }
             }
             throw NoSuchElementException("Key $name & alternatives $altKey is missing in the map.")
         }

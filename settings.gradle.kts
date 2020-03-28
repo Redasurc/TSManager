@@ -10,5 +10,5 @@ gradleEnterprise {
 }
 
 
-rootProject.name = "ts3botV2"
-include("teamspeakClient")
+rootProject.name = "ts3manager"
+include(":teamspeakClient", ":managerApp")
