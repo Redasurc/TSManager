@@ -4,19 +4,21 @@ import com.github.manevolent.ts3j.command.CommandException
 import com.github.manevolent.ts3j.identity.LocalIdentity
 import com.github.theholywaffle.teamspeak3.TS3Config
 import com.github.theholywaffle.teamspeak3.TS3Query
-import com.github.theholywaffle.teamspeak3.api.ChannelProperty
+import eu.redasurc.tsclient.TeamspeakClient.TsStatus.*
+import eu.redasurc.tsclient.TeamspeakClient.ConnectionStatus.*
 import org.slf4j.LoggerFactory
 import java.io.Closeable
 import java.io.File
 import java.io.IOException
+import java.lang.Exception
 import java.net.InetSocketAddress
 
 class TeamspeakClient (private val connectionSettings: ConnectionSettings) : Closeable {
     val events: EventManager = EventManager()
 
-    var started = false
 
     private val log = LoggerFactory.getLogger(this::class.java)
+    internal val modules: MutableList<TSModule> = mutableListOf()
 
     // TS Clients
     private val sqConfig = TS3Config()
@@ -26,26 +28,53 @@ class TeamspeakClient (private val connectionSettings: ConnectionSettings) : Clo
     val udpClient = CustomLocalTeamspeakClientSocket()
 
     val ts = VirtualTS(udpClient, sqClient, events)
+    var clientStatus = NEW
+    var connectionStatus = UNKNOWN
+
+
+    init {
+        events.connected.register { ->
+            log.info("Initializing modules")
+            if(clientStatus == INITIALIZING_MODULES) {
+                modules.forEach {
+                    log.info("Initializing ${it.getModuleName()} ")
+                    try {
+                        it.startModule(this)
+                    } catch (e: Exception) {
+                        log.error("Starting module ${it.getModuleName()} failed", e)
+                    }
+                }
+                clientStatus = RUNNING
+            }
+        }
+    }
+
 
 
 
     fun start() {
-        if(started) return
-        started = true
+        if(clientStatus.isStarted()) return
+        clientStatus = INITIALIZING
         // Start client
+        connectionStatus = CONNECTING
         connectSqClient()
         connectUdpClient()
         setupClients()
+        connectionStatus = CONNECTED
         ts.updater.init()
+        clientStatus = INITIALIZING_MODULES
         ts.updater.run()
-
+        // INIT MODULES IN MONITOR THREAD
     }
+
     fun stop() {
-        if(!started) return
-        started = false
+        if(!clientStatus.isStarted() && clientStatus != STOPPING) return
         close()
     }
 
+    fun registerModules(modules: List<TSModule>) {
+        this.modules.addAll(modules)
+    }
 
     fun connectSqClient() {
         if (sqClient.isConnected) {
@@ -108,7 +137,47 @@ class TeamspeakClient (private val connectionSettings: ConnectionSettings) : Clo
 
 
     override fun close() {
+        clientStatus = STOPPING
         sqClient.exit()
         udpClient.disconnect("quitting")
+        connectionStatus = DISCONNECTED
+        modules.forEach {
+            try {
+                it.stopModule(events)
+            } catch (e: Exception) {
+                log.error("Stopping module ${it.getModuleName()} failed", e)
+            }
+        }
+        // STOP MODULES
+        clientStatus = STOPPED
+    }
+
+    override fun toString(): String {
+        with(connectionSettings) {
+            return "TeamspeakClient - $clientStatus-$connectionStatus - (${serverAdress}:${ports.udp} - ${login.squser})"
+        }
+    }
+
+    enum class TsStatus {
+        NEW,
+        INITIALIZING,
+        INITIALIZING_MODULES,
+        RUNNING,
+        STOPPING,
+        STOPPED,
+        CRASHED;
+
+        fun isStarted():Boolean {
+            return listOf(INITIALIZING, RUNNING, STOPPING).contains(this)
+        }
+    }
+    enum class ConnectionStatus {
+        UNKNOWN,
+        CONNECTING,
+        CONNECTED,
+        DISCONNECTED,
+        CONNECTION_LOST,
+        RECONNECTING,
+        CONNECTION_FAILED
     }
 }

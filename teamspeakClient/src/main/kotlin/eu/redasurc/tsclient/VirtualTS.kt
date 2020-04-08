@@ -66,22 +66,7 @@ class VirtualTS(udpClient: LocalTeamspeakClientSocket, sqClient: TS3Query, event
         val running = AtomicBoolean(false)
 
         fun init() {
-            if(false) { // TODO: update logic
-                val listClients = udpClient.listClients()
-                val listChannels = udpClient.listChannels()
-                val time = System.currentTimeMillis()
-                var i = 0
-                listClients.forEach{
-                    i++
-                    val clientInfo = udpClient.getClientInfo(it.id)
-                    log.info("Initial Client List: $it")
-                    log.info("Initial Client Info: $clientInfo")
-                }
-                log.info("Updated $i clients in {}ms", System.currentTimeMillis() - time)
-                listChannels.forEach{
-                    log.info("Initial Channel List: $it")
-                }
-            }
+            // DO WE NEED INIT?
         }
 
         private fun fullUpdate() {
@@ -206,7 +191,7 @@ class VirtualTS(udpClient: LocalTeamspeakClientSocket, sqClient: TS3Query, event
                     if(counter == 10 && !connected) {
                         connected = true
                         events.connected.triggerEvent { it() }
-                        log.info("\n\n\nConnected event!!! : \n${virtualTS.clients}\n\n")
+                        log.info("Virtual TS init finished, triggering connected event")
                     }
 
                     // trigger every 60 seconds
@@ -230,7 +215,7 @@ class VirtualTS(udpClient: LocalTeamspeakClientSocket, sqClient: TS3Query, event
          * Handle the given event. Updates the virtualTS and triggers events
          */
         private fun handleEvent(event: BaseEvent) {
-            log.info("Event {} triggered: {}", event::class.java.name, event)
+            log.debug("Event {} triggered: {}", event::class.java.name, event)
             when(event) {
                 // CLIENT EVENTS
                 is ClientJoinEvent -> {

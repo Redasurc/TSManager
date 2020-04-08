@@ -1,26 +1,34 @@
 package eu.redasurc.ts3botV2.service.bot.modules
 
+import com.github.theholywaffle.teamspeak3.TS3Api
 import com.github.theholywaffle.teamspeak3.api.ChannelProperty
 import com.github.theholywaffle.teamspeak3.api.exception.TS3CommandFailedException
 import eu.redasurc.tsclient.*
 import org.slf4j.LoggerFactory
-import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Service
 
 
 @Service
-class AutoCreateTeamChannels(@Autowired val tsClient: TeamspeakClient) {
+class AutoCreateTeamChannels : TSModule {
     private val log = LoggerFactory.getLogger(this::class.java)
+    private var status = TSModule.ModuleStatus.INIT
+    private lateinit var api : TS3Api
+    private lateinit var virtualTS : VirtualTS
 
-    init{
-        registerEvents()
+
+    override fun startModule(client: TeamspeakClient) {
+        // Register all event handlers
+        registerEvents(client.events)
+
+        this.api = client.sqClient.api
+        this.virtualTS = client.ts
+        status = TSModule.ModuleStatus.STARTED
+        // Refresh all channels
+        fullRefresh()
     }
 
-    /**
-     * Register all events
-     */
-    private final fun registerEvents() {
-        with(tsClient.events) {
+    private fun registerEvents(events: EventManager) {
+        with(events) {
             // Channel events
             channelAdded.register { channel: TSChannel, _: TSClient? -> checkTopic(channel) }
             channelModified.register { old: TSChannel, new: TSChannel, _: TSClient? ->
@@ -35,23 +43,27 @@ class AutoCreateTeamChannels(@Autowired val tsClient: TeamspeakClient) {
             // Client Events
             clientConnected.register { _: TSClient, channel: TSChannel -> refreshSubchannels(channel) }
             clientDisconnected.register { _: TSClient, channel: TSChannel, _: DisconnectReason,
-                                                          _: String?, _: TSClient? ->
+                                          _: String?, _: TSClient? ->
                 refreshSubchannels(channel)
             }
             clientMoved.register { _: TSClient, old: TSChannel, new: TSChannel,
-                                                   _: MoveReason, _: String?, _: TSClient? ->
+                                   _: MoveReason, _: String?, _: TSClient? ->
                 refreshSubchannels(old, new)
             }
 
-            // Full refresh on connect and after every virtualTS quick refresh
-            connected.register(::fullRefresh)
+            // Full refresh after every virtualTS quick refresh
             quickRefresh.register(::fullRefresh)
         }
-
     }
 
+    override fun stopModule(events: EventManager) {
+        events.unregister(this)
+        status = TSModule.ModuleStatus.STOPPED
+    }
+
+
     private val monitoredChannels = mutableMapOf<Int, Metadata>()
-    private val regex = "<<managed\\|*([^\\|]+)*\\|*([0-9]+)*>>".toRegex()
+    private val regex = "<<managed\\|*([^|]+)*\\|*([0-9]+)*>>".toRegex()
     private val autocreatedTopic = "<<autocreated>>"
 
     private val channelProps = mapOf(ChannelProperty.CHANNEL_FLAG_SEMI_PERMANENT to "1",
@@ -69,6 +81,10 @@ class AutoCreateTeamChannels(@Autowired val tsClient: TeamspeakClient) {
     }
 
     private fun checkTopic(channel: TSChannel, map: MutableMap<Int, Metadata>) {
+        // Break if module not running
+        if(status != TSModule.ModuleStatus.STARTED) return
+
+        // Break if channel has no topic
         val topic = channel.channelTopic ?: return
         val matchResult = regex.find(topic)
         matchResult?.run {
@@ -97,14 +113,17 @@ class AutoCreateTeamChannels(@Autowired val tsClient: TeamspeakClient) {
      * match the pattern given in the metadata object for that id
      */
     private fun refreshSubchannels(channelId: ChannelId) {
+        // Break if module not running
+        if(status != TSModule.ModuleStatus.STARTED) return
+
         // Break if channel is unmonitored
         val metadata = monitoredChannels[channelId] ?: return
 
         // Break if channel can't be found (possible desync event)
-        val channel = tsClient.ts.channels[channelId] ?: return
+        val channel = virtualTS.channels[channelId] ?: return
 
         // All child channels of the current channel
-        val childChannels = tsClient.ts.getChildChannels(channel)
+        val childChannels = virtualTS.getChildChannels(channel)
 
         // Map with number of sub-channel to channel name
         val nameList = (metadata.maxChannels downTo 1).map { it to "${metadata.prefix} $it" }.toMap()
@@ -114,8 +133,8 @@ class AutoCreateTeamChannels(@Autowired val tsClient: TeamspeakClient) {
         childChannels.stream()
                 .filter { autocreatedTopic == it.channelTopic }
                 .filter { !nameList.values.contains(it.name) }
-                .filter { tsClient.ts.getClients(it).isEmpty() }
-                .forEach { try {tsClient.sqClient.api.deleteChannel(it.id)} catch(e: TS3CommandFailedException) {}}
+                .filter { virtualTS.getClients(it).isEmpty() }
+                .forEach { try {api.deleteChannel(it.id)} catch(e: TS3CommandFailedException) {}}
 
         // Map with number of sub-channel to TSChannel object if exists
         val createdChannels =  nameList.map {
@@ -124,7 +143,7 @@ class AutoCreateTeamChannels(@Autowired val tsClient: TeamspeakClient) {
 
         // Map with number of sub-channel to "isEmpty"
         val channelUsers = createdChannels
-                .map { it.key to tsClient.ts.getClients(it.value).isEmpty()}
+                .map { it.key to virtualTS.getClients(it.value).isEmpty()}
                 .toMap()
 
         var blocked = false
@@ -137,8 +156,11 @@ class AutoCreateTeamChannels(@Autowired val tsClient: TeamspeakClient) {
             tsChannel ?:run {
                 if(blocked || channelUsers.filter { it.key < number }.filter { it.value }.isEmpty()) {
                     nameList[number]?.run {
-                        tsClient.sqClient.api.createChannel(this,
-                                channelProps.plus(ChannelProperty.CPID to channelId.toString()))
+                        try {
+                            api.createChannel(this, channelProps.plus(ChannelProperty.CPID to "$channelId"))
+                        } catch(e: Exception) {
+                            log.warn("Channel creation failed", e)
+                        }
                     }
                 }
             }
@@ -156,7 +178,7 @@ class AutoCreateTeamChannels(@Autowired val tsClient: TeamspeakClient) {
             // an empty channel as well, delete this one
             } else if(!blocked && channelUsers.filter { it.key < number }.filter { it.value }.isNotEmpty()) {
                 try {
-                    tsClient.sqClient.api.deleteChannel(tsChannel.id)
+                    api.deleteChannel(tsChannel.id)
                 } catch(e: TS3CommandFailedException) {}
             }
 
@@ -166,7 +188,7 @@ class AutoCreateTeamChannels(@Autowired val tsClient: TeamspeakClient) {
 
     private fun fullRefresh() {
         val newMap = mutableMapOf<ChannelId, Metadata>()
-        for ((_, tsChannel) in tsClient.ts.channels) {
+        for ((_, tsChannel) in virtualTS.channels) {
             checkTopic(tsChannel, newMap)
         }
         monitoredChannels.clear()
@@ -182,4 +204,8 @@ class AutoCreateTeamChannels(@Autowired val tsClient: TeamspeakClient) {
     // ---------------------- //
 
     data class Metadata(val prefix: String, val maxChannels: Int, val channelId: Int)
+
+    override fun getModuleName(): String {
+        return "Autocreate Channels"
+    }
 }

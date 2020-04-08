@@ -10,6 +10,9 @@ data class MonitorProperties(
         @DefaultValue("localhost")
         val server: String,
 
+        @DefaultValue("false")
+        val autoconnect: Boolean,
+
         @DefaultValue("1")
         val channel: Int,
 
@@ -43,3 +46,36 @@ data class MonitorProperties(
             val pass: String
     )
 }
+
+
+@ConstructorBinding
+@ConfigurationProperties("ts3manager.email")
+data class EmailProperties(
+        @DefaultValue("ts@bot.com")
+        val from: String,
+
+        @DefaultValue("http://localhost:8080")
+        val appUrl: String,
+
+        @DefaultValue("TS Manager Registration")
+        val registrationSubject: String,
+
+        @DefaultValue("To confirm your e-mail address, please click the link below:")
+        val registrationMessage: String,
+
+        @DefaultValue("1209600") // 14 days - in seconds
+        val tokenMaxAge: Long)
+
+
+
+@ConstructorBinding
+@ConfigurationProperties("google.recaptcha.key")
+data class CaptchaSettings(
+        @DefaultValue("true")
+        val enabled: Boolean,
+
+        @DefaultValue("")
+        val site: String,
+
+        @DefaultValue("")
+        val secret: String)

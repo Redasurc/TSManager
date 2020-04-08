@@ -11,20 +11,36 @@ repositories {
     mavenCentral()
 }
 
+val developmentOnly by configurations.creating
+configurations {
+    runtimeClasspath {
+        extendsFrom(developmentOnly)
+    }
+}
+
 dependencies {
     implementation(project(":teamspeakClient")) {
         exclude("org.slf4j", "slf4j-simple")
     }
-    compile("org.jetbrains.kotlin:kotlin-reflect")
-    compile("org.springframework.boot:spring-boot-starter-data-jpa")
-    compile("org.springframework.boot:spring-boot-starter-security")
-    compile("org.springframework.boot:spring-boot-starter-web")
-    compile("org.springframework.boot:spring-boot-starter-thymeleaf")
-    compile("org.hibernate","hibernate-envers")
+    implementation("org.jetbrains.kotlin:kotlin-reflect")
+    implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
+    implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
+
+    implementation("org.springframework.boot:spring-boot-starter-data-jpa")
+    implementation("org.springframework.boot:spring-boot-starter-security")
+    implementation("org.springframework.boot:spring-boot-starter-web")
+    implementation("org.springframework.boot:spring-boot-starter-thymeleaf")
+    implementation("org.springframework.boot:spring-boot-starter-mail")
+    implementation("org.hibernate","hibernate-envers")
     runtimeOnly("com.h2database:h2:1.3.176")
-    compile("com.fasterxml.jackson.module:jackson-module-kotlin")
-    compile("org.jetbrains.kotlin:kotlin-reflect")
-    compile("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
+
+    // Password strength estimation:
+    implementation("me.gosimple", "nbvcxz", "1.4.3")
+
+    developmentOnly("org.springframework.boot:spring-boot-devtools")
+    testImplementation("org.springframework.boot:spring-boot-starter-test") {
+        exclude("org.junit.vintage", "junit-vintage-engine")
+    }
 
 
 

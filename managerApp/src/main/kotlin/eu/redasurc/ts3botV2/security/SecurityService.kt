@@ -1,29 +1,44 @@
 package eu.redasurc.ts3botV2.security
 
-import eu.redasurc.ts3botV2.entity.ClanPosition
-import eu.redasurc.ts3botV2.entity.ServerPermissions.*
-import eu.redasurc.ts3botV2.entity.User
-import eu.redasurc.ts3botV2.entity.UserRepository
+import eu.redasurc.ts3botV2.domain.BruteForceException
+import eu.redasurc.ts3botV2.domain.entity.ClanPosition
+import eu.redasurc.ts3botV2.domain.entity.ServerPermissions.*
+import eu.redasurc.ts3botV2.domain.entity.User
+import eu.redasurc.ts3botV2.domain.entity.UserRepository
 import org.slf4j.LoggerFactory
 import org.springframework.security.core.GrantedAuthority
 import org.springframework.security.core.authority.SimpleGrantedAuthority
 import org.springframework.security.core.userdetails.UserDetails
 import org.springframework.security.core.userdetails.UserDetailsService
+import org.springframework.security.core.userdetails.UsernameNotFoundException
 import org.springframework.stereotype.Service
 import java.util.stream.Collectors
-
+import javax.servlet.http.HttpServletRequest
 
 
 /**
  * Spring security user detail service
  */
 @Service
-class CustomUserDetailsService (private val userRepository: UserRepository) : UserDetailsService {
+class CustomUserDetailsService (private val userRepository: UserRepository,
+                                private val bruteForceService: BruteForceService,
+                                private val request: HttpServletRequest) : UserDetailsService {
     override fun loadUserByUsername(username: String): UserDetails {
-        return CustomUserDetails(userRepository.findOneByLogin(username)!!)
+        // Before attempting to login, check if ip or username is locked due to brute-force settings
+        val ip = getClientIP(request)
+        if(bruteForceService.isBlocked(ip)) {
+            throw BruteForceException("IP address is blocked for 2 hours. Too many invalid login attempts.")
+        }
+        if(bruteForceService.isUserBlocked(username)) {
+            throw BruteForceException("There have been to many invalid login attempts for this user. " +
+                    "User is blocked for 2 hours.")
+        }
+
+        // Search for user and return
+        return CustomUserDetails(userRepository.findOneByLoginIgnoreCase(username)
+                ?: throw UsernameNotFoundException("Username not found"))
     }
 }
-
 
 
 /**

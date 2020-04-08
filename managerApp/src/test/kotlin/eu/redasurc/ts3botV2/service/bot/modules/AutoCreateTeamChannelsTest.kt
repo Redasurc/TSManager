@@ -1,6 +1,5 @@
 package eu.redasurc.ts3botV2.service.bot.modules
 
-import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 
 internal class AutoCreateTeamChannelsTest {
