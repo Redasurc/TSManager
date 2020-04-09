@@ -28,14 +28,22 @@ class CaptchaVerificationFilter(private val processUrl: String,
     override fun doFilter(request: ServletRequest, response: ServletResponse, chain: FilterChain) {
         val req = request as HttpServletRequest
         val res = response as HttpServletResponse
-        if (processUrl == req.servletPath && "POST".equals(req.method, ignoreCase = true) && bruteForceService.isEnforcingChapta(getClientIP(request))) {
+        val captchaShown = request.getParameter("captcha")?.equals("true")?:false
+        val username : String? = request.getParameter("username")
+        if (processUrl == req.servletPath && "POST".equals(req.method, ignoreCase = true)
+                && ((bruteForceService.isEnforcingChapta(getClientIP(request), username) || captchaShown))) {
             val captcha = request.getParameter("g-recaptcha-response")
             try {
                 captchaService.processResponse(captcha)
             } catch (e: Exception) {
-                unsuccessfulAuthentication(req, res, InsufficientAuthenticationException("Wrong captcha verification code."))
+                if (captchaShown) {
+                    unsuccessfulAuthentication(req, res, InsufficientAuthenticationException("Wrong captcha verification code."))
+                } else {
+                    unsuccessfulAuthentication(req, res, InsufficientAuthenticationException("You need to solve the captcha."))
+                }
                 return
             }
+
         }
         chain.doFilter(request, response)
     }

@@ -10,18 +10,35 @@ data class LoginAttempt(val username: String, val ip: String, val timestamp: Dat
 class BruteForceService {
     private val log = LoggerFactory.getLogger(this::class.java)
 
-    private val MAX_ATTEMPT_PER_ADDRESS = 4
-    private val CHAPTA_ATTEMPT_PER_ADDRESS = 2
+    /** Require CAPTCHA for IP after ... failed attempts */
+    private val CAPTCHA_ATTEMPT_PER_ADDRESS = 2
+
+    /** Lock IP after ... failed attempts */
+
+    private val MAX_ATTEMPT_PER_ADDRESS = 20
+
+    /** Require CAPTCHA for USER after ... failed attempts */
+    private val CAPTCHA_ATTEMPT_PER_USER = 20
+
+    /** Lock USER after ... failed attempts */
     private val MAX_ATTEMPT_PER_USER = 50
 
-    // Counts registrations and forgot password calls
+    /** Counts registrations and forgot password calls per IP */
     private val MAX_REGISTRATION_PER_ADDRESS = 10
 
-    // Max age of cached login attempt (in ms)
+    /** Max age of cached login attempt (in ms) */
     private val MAX_AGE = 7200000 // 2 hours
+
+    /** QUEUE with LoginAttempts */
     private val attempts: ArrayDeque<LoginAttempt> = ArrayDeque()
+
+    /** QUEUE with RegistrationAttempts (only successful attempts counted) */
     private val registrationAttempts: ArrayDeque<LoginAttempt> = ArrayDeque()
 
+    /**
+     * On successful login remove all failed attempts for that IP and USER
+     * (Don't remove events for that IP and a different user)
+     */
     @Synchronized
     fun loginSucceeded(remoteAddr: String, username: String) {
         attempts
@@ -29,11 +46,17 @@ class BruteForceService {
                 .forEach{ attempts.remove(it) }
     }
 
+    /**
+     * Log failed login attempt
+     */
     @Synchronized
     fun loginFailed(remoteAddr: String, username: String)  {
         attempts.push(LoginAttempt(username, remoteAddr))
     }
 
+    /**
+     * Remove all elements from queues older than MAX_AGE
+     */
     @Synchronized
     fun cleanCache() {
         val oldestTime = System.currentTimeMillis() - MAX_AGE
@@ -43,8 +66,15 @@ class BruteForceService {
             if (attempts.peek().timestamp.time > oldestTime) break
             attempts.poll()
         }
+        while(registrationAttempts.isNotEmpty()) {
+            if (registrationAttempts.peek().timestamp.time > oldestTime) break
+            registrationAttempts.poll()
+        }
     }
 
+    /**
+     * Is current IP address blocked?
+     */
     @Synchronized
     fun isBlocked(remoteAddr: String): Boolean {
         cleanCache()
@@ -59,6 +89,9 @@ class BruteForceService {
         return false
     }
 
+    /**
+     * Is given username blocked?
+     */
     @Synchronized
     fun isUserBlocked(username: String): Boolean {
         cleanCache()
@@ -73,10 +106,16 @@ class BruteForceService {
         return false
     }
 
+    /**
+     * Is the current IP or user enforcing captcha
+     */
     @Synchronized
-    fun isEnforcingChapta(remoteAddr: String): Boolean {
+    fun isEnforcingChapta(remoteAddr: String, username: String? = null): Boolean {
         cleanCache()
-        return attempts.filter { it.ip == remoteAddr }.count() > CHAPTA_ATTEMPT_PER_ADDRESS
+        val userEnforcing = username?.run {
+            attempts.filter { it.username == username }.count() > CAPTCHA_ATTEMPT_PER_USER } ?: false
+
+        return attempts.filter { it.ip == remoteAddr }.count() > CAPTCHA_ATTEMPT_PER_ADDRESS || userEnforcing
     }
 
 

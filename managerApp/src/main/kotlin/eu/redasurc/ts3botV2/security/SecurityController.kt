@@ -21,9 +21,6 @@ import javax.servlet.http.HttpServletRequest
 import javax.validation.Valid
 
 
-// https://www.codebyamir.com/blog/user-account-registration-with-spring-boot
-// https://www.codebyamir.com/blog/forgot-password-feature-with-java-and-spring-boot
-
 @Controller
 class RegisterController (private val userManagementService: UserManagementService,
                           private val bruteForceService: BruteForceService,
@@ -32,7 +29,8 @@ class RegisterController (private val userManagementService: UserManagementServi
     @GetMapping("/login")
     fun login(request: HttpServletRequest, model: Model) : String {
         model.addAttribute("errorMessage", "Invalid username or password.")
-        if (bruteForceService.isEnforcingChapta(getClientIP(request))) {
+        if (bruteForceService.isEnforcingChapta(getClientIP(request))
+                || request.getParameter("captchaError") != null) {
             model.addAttribute("captchaSettings", captchaService.captchaSettings)
         }
 
@@ -44,7 +42,7 @@ class RegisterController (private val userManagementService: UserManagementServi
             }
 
         }
-        return "/login";
+        return "security/login";
     }
 
     // Return registration form template
@@ -52,7 +50,7 @@ class RegisterController (private val userManagementService: UserManagementServi
     fun showRegistrationPage(modelAndView: ModelAndView, user: User?): ModelAndView {
         modelAndView.addObject("captchaSettings", captchaService.captchaSettings)
         modelAndView.addObject("user", user)
-        modelAndView.viewName = "register"
+        modelAndView.viewName = "security/register"
         return modelAndView
     }
 
@@ -68,7 +66,7 @@ class RegisterController (private val userManagementService: UserManagementServi
             modelAndView.addObject("warningMessage", "ReCaptcha not checked.")
             return modelAndView
         }
-        modelAndView.viewName = "register"
+        modelAndView.viewName = "security/register"
         user?: run {
             return modelAndView
         }
@@ -125,14 +123,14 @@ class RegisterController (private val userManagementService: UserManagementServi
 
         modelAndView.addObject("successMessage", "A confirmation e-mail has been sent to $email")
         modelAndView.addObject("title", "Registration success")
-        modelAndView.viewName = "confirm"
+        modelAndView.viewName = "security/confirm"
         return modelAndView
     }
 
     // Process confirmation link
     @RequestMapping(value = ["/confirm"], method = [RequestMethod.GET])
     fun showConfirmationPage(modelAndView: ModelAndView, @RequestParam("token") token: String?): ModelAndView {
-        modelAndView.viewName = "confirm"
+        modelAndView.viewName = "security/confirm"
         modelAndView.addObject("title", "Account activation")
         token?: run {
             modelAndView.addObject("invalidToken", "Oops!  This is an invalid confirmation link.")
