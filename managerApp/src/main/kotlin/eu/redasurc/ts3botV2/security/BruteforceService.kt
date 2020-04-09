@@ -6,6 +6,7 @@ import java.util.*
 
 data class LoginAttempt(val username: String, val ip: String, val timestamp: Date = Date())
 
+// TODO: All check if blocked functions can be generalized
 @Service
 class BruteForceService {
     private val log = LoggerFactory.getLogger(this::class.java)
@@ -23,8 +24,11 @@ class BruteForceService {
     /** Lock USER after ... failed attempts */
     private val MAX_ATTEMPT_PER_USER = 50
 
-    /** Counts registrations and forgot password calls per IP */
+    /** Counts registrations and forgot password calls per IP (Everything that sends an email) */
     private val MAX_REGISTRATION_PER_ADDRESS = 10
+
+    /** Lock IP after ... failed token redemption attempts */
+    private val MAX_TOKEN_ATTEMPTS = 50
 
     /** Max age of cached login attempt (in ms) */
     private val MAX_AGE = 7200000 // 2 hours
@@ -34,6 +38,9 @@ class BruteForceService {
 
     /** QUEUE with RegistrationAttempts (only successful attempts counted) */
     private val registrationAttempts: ArrayDeque<LoginAttempt> = ArrayDeque()
+
+    /** QUEUE with Token activation attempts */
+    private val tokenAttempts: ArrayDeque<LoginAttempt> = ArrayDeque()
 
     /**
      * On successful login remove all failed attempts for that IP and USER
@@ -59,16 +66,16 @@ class BruteForceService {
      */
     @Synchronized
     fun clearExpiredAttempts() {
-        val oldestTime = System.currentTimeMillis() - MAX_AGE
+        // Remove all entrys older than this expirationTimestamp
+        val expirationTimestamp = System.currentTimeMillis() - MAX_AGE
 
-        // Remove elements from queue until timestamp is newer than oldestTime
-        while(attempts.isNotEmpty()) {
-            if (attempts.peek().timestamp.time > oldestTime) break
-            attempts.poll()
-        }
-        while(registrationAttempts.isNotEmpty()) {
-            if (registrationAttempts.peek().timestamp.time > oldestTime) break
-            registrationAttempts.poll()
+        // Iterate through all queues
+        listOf(attempts, registrationAttempts, tokenAttempts).forEach {
+            // Remove elements from queue until timestamp is newer than oldestTime
+            while(it.isNotEmpty()) {
+                if (it.peek().timestamp.time > expirationTimestamp) break
+                it.poll()
+            }
         }
     }
 
@@ -118,5 +125,32 @@ class BruteForceService {
         return attempts.filter { it.ip == remoteAddr }.count() > CAPTCHA_ATTEMPT_PER_ADDRESS || userEnforcing
     }
 
+
+    fun registrationAttempt(remoteAddr: String) {
+        registrationAttempts.push(LoginAttempt("", remoteAddr))
+    }
+    fun failedTokenAttempt(remoteAddr: String) {
+        tokenAttempts.push(LoginAttempt("", remoteAddr))
+    }
+
+    fun isRegistrationLocked(remoteAddr: String): Boolean {
+        clearExpiredAttempts()
+        val count = registrationAttempts.filter { it.ip == remoteAddr }.count()
+        if(count >= MAX_REGISTRATION_PER_ADDRESS) {
+            log.warn("$count registration and/or pw resets from $remoteAddr, IP address is locked")
+            return true
+        }
+        return false
+    }
+
+    fun isTokenLocked(remoteAddr: String): Boolean {
+        clearExpiredAttempts()
+        val count = tokenAttempts.filter { it.ip == remoteAddr }.count()
+        if(count >= MAX_TOKEN_ATTEMPTS) {
+            log.warn("$count token redemption attempts from $remoteAddr, IP address is locked")
+            return true
+        }
+        return false
+    }
 
 }

@@ -1,14 +1,8 @@
 package eu.redasurc.ts3botV2.security
 
 import eu.redasurc.ts3botV2.config.EmailProperties
-import eu.redasurc.ts3botV2.domain.EmailAlreadyRegisteredException
-import eu.redasurc.ts3botV2.domain.RegistrationException
-import eu.redasurc.ts3botV2.domain.TokenException
-import eu.redasurc.ts3botV2.domain.UsernameAlreadyRegisteredException
-import eu.redasurc.ts3botV2.domain.entity.ActivationToken
-import eu.redasurc.ts3botV2.domain.entity.TokenRepository
-import eu.redasurc.ts3botV2.domain.entity.User
-import eu.redasurc.ts3botV2.domain.entity.UserRepository
+import eu.redasurc.ts3botV2.domain.*
+import eu.redasurc.ts3botV2.domain.entity.*
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.mail.MailSender
@@ -41,7 +35,6 @@ class UserManagementService(@Autowired private val userRepository: UserRepositor
     fun registerUser(_username: Username, _email: String, password: Password, appUrl: String? = null) {
         val username = _username.trim()
         val email = _email.trim().toLowerCase()
-        val myAppUrl = appUrl ?: mailProperties.appUrl
         userRepository.findOneByLoginIgnoreCase(username) ?.run {
             log.info("Username $username already in use")
             throw UsernameAlreadyRegisteredException("Username already in use")
@@ -54,39 +47,106 @@ class UserManagementService(@Autowired private val userRepository: UserRepositor
         // Disable user until they click on confirmation link in email
         var user = User(username, email, pwEncoder.encode(password))
         user = userRepository.save(user)
-        val token = ActivationToken(UUID.randomUUID().toString(), user)
+        sendActivationEmail(user, appUrl)
+    }
+
+    @Throws(TokenException::class)
+    fun useToken(token: String) : TokenType{
+        val securityToken = tokenRepository.findByToken(token) ?: throw TokenException("Token unknown")
+
+        // Check if token too old and if, resend the activation email
+        if(tokenExpired(securityToken)) {
+            val user = securityToken.user
+            // Token either to old or no creation date set
+            tokenRepository.delete(securityToken)
+
+            // Resend token
+            when(securityToken.type) {
+                TokenType.ACTIVATION_TOKEN -> sendActivationEmail(user)
+                TokenType.PW_RESET_TOKEN -> sendResetPwEmail(user)
+            }
+
+            throw TokenExpiredException("Token expired")
+        }
+        if(securityToken.type == TokenType.ACTIVATION_TOKEN) {
+            securityToken.user.enabled = true
+            userRepository.save(securityToken.user)
+            tokenRepository.delete(securityToken)
+
+        }
+        // Activate user
+        return securityToken.type
+    }
+
+    private fun sendActivationEmail(user: User, appUrl: String? = null) {
+        sendTokenEmail(user, appUrl, TokenType.ACTIVATION_TOKEN,
+                mailProperties.registrationSubject, mailProperties.registrationMessage)
+    }
+
+    /**
+     * Send a pw reset email or ignore if email not found
+     */
+    fun sendResetPwEmail(email: String, appUrl: String? = null) {
+        // Get user or abort without exception
+        val user = userRepository.findByEmailIgnoreCase(email.trim()) ?: return
+        sendResetPwEmail(user, appUrl)
+    }
+    fun sendResetPwEmail(user: User, appUrl: String? = null) {
+        sendTokenEmail(user, appUrl, TokenType.PW_RESET_TOKEN,
+                mailProperties.pwResetSubject, mailProperties.pwResetMessage)
+    }
+
+    private fun sendTokenEmail(user: User, appUrl: String?, tokenType: TokenType, subject: String, message: String) {
+        val myAppUrl = appUrl ?: mailProperties.appUrl
+
+        // prepare and save token
+        val token = SecurityToken(UUID.randomUUID().toString(), user, tokenType)
         tokenRepository.save(token)
 
-        // Send Email
+        val msg = message
+                .replace("{USERNAME}", user.login, true)
+                .replace("{TOKEN}", "${myAppUrl}/token?token=${token.token}", true)
+
+        // Prepare Email
         val registrationEmail = SimpleMailMessage()
-        registrationEmail.setTo(email)
-        registrationEmail.setSubject(mailProperties.registrationSubject)
-        registrationEmail.setText("${mailProperties.registrationMessage}\n${myAppUrl}/confirm?token=${token.token}")
+        registrationEmail.setTo(user.email)
+        registrationEmail.setSubject(subject)
+        registrationEmail.setText(msg)
         registrationEmail.setFrom(mailProperties.from)
 
-        // Run mail sending async
+        // Send Email Async to not block the current thread
         thread {
             mailSender.send(registrationEmail)
         }
     }
 
-    @Throws(TokenException::class)
-    fun activateUser(token: String) {
-        val activationToken = tokenRepository.findByToken(token) ?: throw TokenException("Token unknown")
-
+    private fun tokenNotExpired(activationToken: SecurityToken) : Boolean {
         // Check if token still valid
         val oldestDateToBeAccepted = LocalDateTime.now().minusSeconds(mailProperties.tokenMaxAge)
-        if(activationToken.createdDate.isPresent && activationToken.createdDate.get().isAfter(oldestDateToBeAccepted)) {
-            // Activate user
-            activationToken.user.enabled = true
-            userRepository.save(activationToken.user)
-            tokenRepository.delete(activationToken)
-            return
+        return activationToken.createdDate.isPresent && activationToken.createdDate.get().isAfter(oldestDateToBeAccepted)
+    }
+    private fun tokenExpired(activationToken: SecurityToken) : Boolean {
+        return !tokenNotExpired(activationToken)
+    }
+
+    fun resetPW(token: String, pw: String) {
+        val securityToken = tokenRepository.findByTokenAndType(token, TokenType.PW_RESET_TOKEN)
+                                                                    ?: throw TokenException("Token unknown")
+        // Check if token too old
+        if(tokenExpired(securityToken)) {
+            throw TokenExpiredException("Token expired")
         }
 
-        // Token either to old or no creation date set
-        tokenRepository.delete(activationToken)
-        throw TokenException("Token expired")
+        val user = securityToken.user
+        user.pw = pwEncoder.encode(pw)
+
+        // Activate user if not already activated
+        // (Separate activation is not necessary. PW reset token gets send per mail)
+        if(!user.enabled) {
+            user.enabled = true
+        }
+        userRepository.save(user)
+        tokenRepository.delete(securityToken)
     }
 
 }

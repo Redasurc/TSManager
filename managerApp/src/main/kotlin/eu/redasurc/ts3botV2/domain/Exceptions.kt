@@ -23,7 +23,13 @@ class UsernameAlreadyRegisteredException: RegistrationException {
     constructor(): super()
 }
 
-class TokenException: RegistrationException {
+open class TokenException: RegistrationException {
+    constructor(message: String, ex: Exception?): super(message, ex)
+    constructor(message: String): super(message)
+    constructor(ex: Exception): super(ex)
+    constructor(): super()
+}
+class TokenExpiredException: TokenException {
     constructor(message: String, ex: Exception?): super(message, ex)
     constructor(message: String): super(message)
     constructor(ex: Exception): super(ex)

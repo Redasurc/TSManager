@@ -18,7 +18,7 @@
     <!-- Custom styles for this template-->
     <link href="../static/css/sb-admin-2.css" rel="stylesheet">
   </th:block>
-  <title th:text="${code} + ' - ' + ${message}">SB Admin 2 - 404</title>
+  <title th:text="${code} + ' - ' + ${message}">Error Page</title>
 </head>
 
 <body>
@@ -28,7 +28,8 @@
         <div class="col-md-12 text-center">
           <div class="error mx-auto" data-text="404" th:attr="data-text=${code}" th:text="${code}">404</div>
           <p class="lead text-gray-800 mb-5" th:text="${message}">Page Not Found</p>
-          <p class="text-gray-500 mb-0" th:text="${slogan}">It looks like you found a glitch in the matrix...</p>
+          <p class="text-gray-500 mb-2" th:text="${slogan}">It looks like you found a glitch in the matrix...</p>
+          <p class="small text-gray-400 mb-0">TraceId: <span th:text="${trace}"></span> </p>
           <a href="/">&larr; Back to Home</a>
         </div>
       </div>

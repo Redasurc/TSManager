@@ -60,8 +60,14 @@ data class EmailProperties(
         @DefaultValue("TS Manager Registration")
         val registrationSubject: String,
 
-        @DefaultValue("To confirm your e-mail address, please click the link below:")
+        @DefaultValue("Hello {username},\n\nTo confirm your e-mail address, please click the link below:\n{token}\n\nYour Allround-Gaming Community")
         val registrationMessage: String,
+
+        @DefaultValue("TS Manager Password Reset")
+        val pwResetSubject: String,
+
+        @DefaultValue("Hello {username},\n\nTo reset your password, please click the link below:\n{token}\n\nYour Allround-Gaming Community")
+        val pwResetMessage: String,
 
         @DefaultValue("1209600") // 14 days - in seconds
         val tokenMaxAge: Long)

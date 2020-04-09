@@ -39,17 +39,25 @@ open class User (
 @Entity
 @Audited
 @EntityListeners(AuditingEntityListener::class)
-class ActivationToken(
+class SecurityToken(
         @Column(unique = true, nullable = false)
         var token: String,
 
         @ManyToOne
         @JoinColumn
-        var user: User
+        var user: User,
+
+        @Enumerated(EnumType.STRING)
+        var type: TokenType
 ) : AbstractAuditable<User, Long> () {
         @Deprecated("Dummy constructor for Spring Data, DO NOT USE")
-        constructor() : this("", DUMMY_USER)
+        constructor() : this("", DUMMY_USER, TokenType.ACTIVATION_TOKEN)
 }
+enum class TokenType {
+        ACTIVATION_TOKEN,
+        PW_RESET_TOKEN
+}
+
 
 @Entity
 @Audited

@@ -1,10 +1,8 @@
 package eu.redasurc.ts3botV2.security
 
-import eu.redasurc.ts3botV2.domain.BruteForceException
-import eu.redasurc.ts3botV2.domain.EmailAlreadyRegisteredException
-import eu.redasurc.ts3botV2.domain.TokenException
-import eu.redasurc.ts3botV2.domain.UsernameAlreadyRegisteredException
+import eu.redasurc.ts3botV2.domain.*
 import eu.redasurc.ts3botV2.domain.dto.User
+import eu.redasurc.ts3botV2.domain.entity.TokenType
 import eu.redasurc.ts3botV2.security.captcha.CaptchaService
 import me.gosimple.nbvcxz.Nbvcxz
 import org.springframework.security.authentication.DisabledException
@@ -17,6 +15,7 @@ import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestMethod
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.servlet.ModelAndView
+import org.springframework.web.servlet.view.RedirectView
 import javax.servlet.http.HttpServletRequest
 import javax.validation.Valid
 
@@ -57,31 +56,29 @@ class RegisterController (private val userManagementService: UserManagementServi
     // Process form input data
     @RequestMapping(value = ["/register"], method = [RequestMethod.POST])
     fun processRegistrationForm(modelAndView: ModelAndView, user: @Valid User?, bindingResult: BindingResult, request: HttpServletRequest): ModelAndView {
+        modelAndView.viewName = "security/register"
         modelAndView.addObject("captchaSettings", captchaService.captchaSettings)
+
         // Check Captcha
-        val response = request.getParameter("g-recaptcha-response")
-        try {
-            captchaService.processResponse(response)
-        } catch (e: Exception) {
+        if (captchaInvalid(request)) {
             modelAndView.addObject("warningMessage", "ReCaptcha not checked.")
             return modelAndView
         }
-        modelAndView.viewName = "security/register"
+
         user?: run {
             return modelAndView
         }
 
         val username = user.username
         val email = user.email
-        val pw = user.pw
-        val pwConfirm = user.pwConfirm
 
-        if(bindingResult.hasErrors()) {
+        if(bruteForceService.isRegistrationLocked(getClientIP(request))) {
+            modelAndView.addObject("warningMessage", "Too many recent registrations. " +
+                    "IP locked for 2 hours.")
             return modelAndView
         }
-        if(pw.isNullOrBlank() || pwConfirm.isNullOrBlank()){
-            modelAndView.addObject("passwordMessage", "No password given")
-            bindingResult.reject("pw")
+
+        if(bindingResult.hasErrors()) {
             return modelAndView
         }
         if(email.isNullOrBlank()) {
@@ -94,23 +91,15 @@ class RegisterController (private val userManagementService: UserManagementServi
             bindingResult.reject("username")
             return modelAndView
         }
-        if(pw != pwConfirm) {
-            modelAndView.addObject("passwordMessage", "Oops! The passwords don't match")
-            bindingResult.reject("pw")
-            return modelAndView
-        }
-        // Check password strength
-        val passwordCheck = Nbvcxz()
-        val strength = passwordCheck.estimate(pw)
-        if (strength.basicScore < 3) {
-            modelAndView.addObject("passwordMessage", "Your password is too weak.  Choose a stronger one.")
+        checkPW(user) ?.run {
+            modelAndView.addObject("passwordMessage", this)
             bindingResult.reject("pw")
             return modelAndView
         }
 
 
         try {
-            userManagementService.registerUser(username, email, pw)
+            userManagementService.registerUser(username, email, user.pw!!)  // PW = null is caught by checkPW()
         } catch (e: EmailAlreadyRegisteredException) {
             modelAndView.addObject("warningMessage", "Oops!  There is already a user registered with the email provided.")
             bindingResult.reject("email")
@@ -121,6 +110,9 @@ class RegisterController (private val userManagementService: UserManagementServi
             return modelAndView
         }
 
+        // Log request with the BruteForce protection service
+        bruteForceService.registrationAttempt(getClientIP(request))
+
         modelAndView.addObject("successMessage", "A confirmation e-mail has been sent to $email")
         modelAndView.addObject("title", "Registration success")
         modelAndView.viewName = "security/confirm"
@@ -128,23 +120,181 @@ class RegisterController (private val userManagementService: UserManagementServi
     }
 
     // Process confirmation link
-    @RequestMapping(value = ["/confirm"], method = [RequestMethod.GET])
-    fun showConfirmationPage(modelAndView: ModelAndView, @RequestParam("token") token: String?): ModelAndView {
+    @RequestMapping(value = ["/token"], method = [RequestMethod.GET])
+    fun showConfirmationPage(modelAndView: ModelAndView, @RequestParam("token") token: String?, request: HttpServletRequest): ModelAndView {
         modelAndView.viewName = "security/confirm"
         modelAndView.addObject("title", "Account activation")
+
+        // Error if BruteForce Service has blocked the IP.
+        if (bruteForceService.isTokenLocked(getClientIP(request))) {
+            modelAndView.addObject("invalidToken", "Too many invalid token attempts. IP address locked.")
+            return modelAndView
+        }
+
+        // Error if toke is null.
         token?: run {
-            modelAndView.addObject("invalidToken", "Oops!  This is an invalid confirmation link.")
+            modelAndView.addObject("invalidToken", "Oops!  This is an invalid token link.")
+            return modelAndView
+        }
+
+        // Try activate the user with the given token.
+        val tokenType = try {
+             userManagementService.useToken(token)
+        } catch (e: TokenExpiredException) {
+            modelAndView.addObject("infoMessage", "Token has expired. We send you a new one per email.")
+            return modelAndView
+        } catch (e: TokenException) {
+            modelAndView.addObject("invalidToken", "Oops!  This is an invalid token link.")
+            bruteForceService.failedTokenAttempt(getClientIP(request))
+            return modelAndView
+        }
+
+        when(tokenType) {
+            TokenType.ACTIVATION_TOKEN -> {
+                modelAndView.addObject("successMessage", "Success! You have been activated")
+                modelAndView.addObject("gotoLogin", "Login")
+            }
+            TokenType.PW_RESET_TOKEN -> {
+                modelAndView.addObject("captchaSettings", captchaService.captchaSettings)
+                modelAndView.addObject("user", User())
+                modelAndView.addObject("token", token)
+                modelAndView.viewName = "security/forgot-password-enter-new"
+            }
+            else -> {
+                modelAndView.addObject("invalidToken", "Oops!  I don't know what to do here... this shouldn't happen. Please contact an admin")
+            }
+        }
+        return modelAndView
+
+    }
+
+
+    //  ---- RESET PW -----
+    // Return reset pw form template
+    @RequestMapping(value = ["/forgot-password"], method = [RequestMethod.GET])
+    fun showResetPasswordPage(modelAndView: ModelAndView, user: User?): ModelAndView {
+        modelAndView.addObject("captchaSettings", captchaService.captchaSettings)
+        modelAndView.addObject("user", user)
+        modelAndView.viewName = "security/forgot-password"
+        return modelAndView
+    }
+
+    // Process form input data
+    @RequestMapping(value = ["/forgot-password"], method = [RequestMethod.POST])
+    fun processResetPasswordRequest(modelAndView: ModelAndView, user: @Valid User?, bindingResult: BindingResult, request: HttpServletRequest): ModelAndView {
+        modelAndView.viewName = "security/forgot-password"
+        modelAndView.addObject("captchaSettings", captchaService.captchaSettings)
+
+        // Check Captcha
+        if (captchaInvalid(request)) {
+            modelAndView.addObject("errorMessage", "ReCaptcha not checked.")
+            return modelAndView
+        }
+
+        if(bruteForceService.isRegistrationLocked(getClientIP(request))) {
+            modelAndView.addObject("warningMessage", "Too many recent requests. " +
+                    "IP locked for 2 hours.")
+            return modelAndView
+        }
+        bruteForceService.registrationAttempt(getClientIP(request))
+
+        // If email not blank try to send reset mail
+        user?.email?.run {
+            if (this.isNotBlank()) {
+                userManagementService.sendResetPwEmail(this)
+                modelAndView.addObject("user", User())
+                modelAndView.addObject("successMessage", "Mail send.")
+                return modelAndView
+            }
+        }
+
+        modelAndView.addObject("errorMessage", "Please enter an email.")
+        return modelAndView
+    }
+
+    @RequestMapping(value = ["/forgot-password/change"], method = [RequestMethod.GET])
+    fun redirectResetPassword(): RedirectView {
+        return RedirectView("/forgot-password");
+    }
+
+    @RequestMapping(value = ["/forgot-password/change"], method = [RequestMethod.POST])
+    fun processResetPasswordForm(modelAndView: ModelAndView, user: @Valid User?,
+                                 @RequestParam("token") token: String?,
+                                 bindingResult: BindingResult, request: HttpServletRequest): ModelAndView {
+        modelAndView.viewName = "security/forgot-password-enter-new"
+        modelAndView.addObject("captchaSettings", captchaService.captchaSettings)
+        modelAndView.addObject("token", token)
+        // Check Captcha
+        if(captchaInvalid(request)) {
+            modelAndView.addObject("errorMessage", "ReCaptcha not checked.")
+            return modelAndView
+        }
+
+        // Error if BruteForce Service has blocked the IP.
+        if (bruteForceService.isTokenLocked(getClientIP(request))) {
+            modelAndView.addObject("errorMessage", "Too many invalid token attempts. IP address locked.")
+            return modelAndView
+        }
+
+        // Error if toke is null.
+        if(token == null || user == null) {
+            modelAndView.addObject("errorMessage", "Invalid request.")
+            return modelAndView
+        }
+        
+        checkPW(user) ?.run {
+            modelAndView.addObject("errorMessage", this)
+            bindingResult.reject("pw")
             return modelAndView
         }
         try {
-            userManagementService.activateUser(token)
+            userManagementService.resetPW(token, user.pw!!) // PW null check in checkPW()
+        } catch (e: TokenExpiredException) {
+            modelAndView.addObject("errorMessage", "Token expired, please request a new password reset link.")
+            return modelAndView
         } catch (e: TokenException) {
-            modelAndView.addObject("invalidToken", "Oops!  This is an invalid confirmation link.")
+            modelAndView.addObject("errorMessage", "Token not found")
+            bruteForceService.failedTokenAttempt(getClientIP(request))
             return modelAndView
         }
-        modelAndView.addObject("successMessage", "Success! You have been activated")
+        modelAndView.viewName = "security/confirm"
+        modelAndView.addObject("title", "Password reset successful")
+        modelAndView.addObject("successMessage", "Success! Your password has been changed")
         modelAndView.addObject("gotoLogin", "Login")
         return modelAndView
+    }
+
+    /**
+     * Checks given PW
+     *
+     * @return Error message or null if everything checks out
+     */
+    private fun checkPW(user: User) : String? {
+        with(user) {
+            if (pw.isNullOrBlank() || pwConfirm.isNullOrBlank()) {
+                return "No password given."
+            }
+            if (pw != pwConfirm) {
+                return "Oops! The passwords don't match."
+            }
+            // Check password strength
+            val passwordCheck = Nbvcxz()
+            val strength = passwordCheck.estimate(pw)
+            if (strength.basicScore < 3) {
+                return "Your password is too weak.  Choose a stronger one."
+            }
+        }
+        return null
+    }
+
+    private fun captchaInvalid(request: HttpServletRequest): Boolean {
+        val response = request.getParameter("g-recaptcha-response")
+        try {
+            captchaService.processResponse(response)
+        } catch (e: Exception) {
+            return true
+        }
+        return false
     }
 
 }

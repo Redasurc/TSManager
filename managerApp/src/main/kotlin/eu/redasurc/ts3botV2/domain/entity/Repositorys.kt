@@ -10,6 +10,7 @@ interface UserRepository : CrudRepository<User, Long> {
 interface GameRepository : CrudRepository<Game, Long>
 interface ClanRepository : CrudRepository<Clan, Long>
 interface ClanInviteRepository : CrudRepository<ClanInvite, Long>
-interface TokenRepository : CrudRepository<ActivationToken, Long> {
-    fun findByToken(token: String) : ActivationToken?
+interface TokenRepository : CrudRepository<SecurityToken, Long> {
+    fun findByToken(token: String) : SecurityToken?
+    fun findByTokenAndType(token: String, type: TokenType) : SecurityToken?
 }

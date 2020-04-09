@@ -39,6 +39,9 @@
               <div th:if="${successMessage}" class="alert alert-success"
                    role="alert" th:text="${successMessage}"></div>
 
+              <div th:if="${infoMessage}" class="alert alert-info"
+                   role="alert" th:text="${infoMessage}"></div>
+
               <div th:if="${invalidToken}" class="alert alert-danger"
                    role="alert" th:text="${invalidToken}"></div>
 

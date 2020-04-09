@@ -40,8 +40,6 @@
                       th:object="${user}" method="post" class="user" role="form"
                       data-toggle="validator"
                       id="registerForm" >
-                <div th:if="${confirmationMessage}" class="alert alert-success"
-                     role="alert" th:text="${confirmationMessage}">confirmation Message</div>
 
                 <div th:if="${successMessage}" class="alert alert-success"
                      role="alert" th:text="${successMessage}">Success</div>
@@ -99,7 +97,7 @@
                 <a class="small" href="#" th:href="@{/forgot-password}">Forgot Password?</a>
               </div>
               <div class="text-center">
-                <a class="small" href="#" th:href="@{/register}">Create an Account!</a>
+                <a class="small" href="#" th:href="@{/login}">Already have an account? Login!</a>
               </div>
             </div>
           </div>
