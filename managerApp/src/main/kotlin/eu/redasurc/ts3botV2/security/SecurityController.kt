@@ -29,7 +29,7 @@ class RegisterController (private val userManagementService: UserManagementServi
     @GetMapping("/login")
     fun login(request: HttpServletRequest, model: Model) : String {
         model.addAttribute("errorMessage", "Invalid username or password.")
-        if (bruteForceService.isEnforcingChapta(getClientIP(request))
+        if (bruteForceService.isEnforcingCaptcha(getClientIP(request))
                 || request.getParameter("captchaError") != null) {
             model.addAttribute("captchaSettings", captchaService.captchaSettings)
         }

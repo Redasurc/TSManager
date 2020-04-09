@@ -58,7 +58,7 @@ class BruteForceService {
      * Remove all elements from queues older than MAX_AGE
      */
     @Synchronized
-    fun cleanCache() {
+    fun clearExpiredAttempts() {
         val oldestTime = System.currentTimeMillis() - MAX_AGE
 
         // Remove elements from queue until timestamp is newer than oldestTime
@@ -77,7 +77,7 @@ class BruteForceService {
      */
     @Synchronized
     fun isBlocked(remoteAddr: String): Boolean {
-        cleanCache()
+        clearExpiredAttempts()
         val count = attempts.filter { it.ip == remoteAddr }.count()
         if(count >= MAX_ATTEMPT_PER_ADDRESS) {
             log.warn("$count recent login attempts from $remoteAddr, IP address is locked")
@@ -94,7 +94,7 @@ class BruteForceService {
      */
     @Synchronized
     fun isUserBlocked(username: String): Boolean {
-        cleanCache()
+        clearExpiredAttempts()
         val count = attempts.filter { it.username == username }.count()
         if(count >= MAX_ATTEMPT_PER_USER) {
             log.warn("$count recent login attempts for user $username, User is locked")
@@ -110,8 +110,8 @@ class BruteForceService {
      * Is the current IP or user enforcing captcha
      */
     @Synchronized
-    fun isEnforcingChapta(remoteAddr: String, username: String? = null): Boolean {
-        cleanCache()
+    fun isEnforcingCaptcha(remoteAddr: String, username: String? = null): Boolean {
+        clearExpiredAttempts()
         val userEnforcing = username?.run {
             attempts.filter { it.username == username }.count() > CAPTCHA_ATTEMPT_PER_USER } ?: false
 

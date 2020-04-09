@@ -24,7 +24,7 @@ class HtmlController {
 }
 
 @Controller
-class MyErrorController : ErrorController {
+class CustomErrorController : ErrorController {
 
     @RequestMapping("/error")
     fun handleError(request: HttpServletRequest, model: Model): String? {

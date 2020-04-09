@@ -16,8 +16,6 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 
 
 
-// TODO: Registration (https://www.baeldung.com/registration-with-spring-mvc-and-spring-security)
-
 @EnableWebSecurity
 class WebSecurityConfiguration(private val customUserDetailsService: CustomUserDetailsService,
                                private val passwordEncoderAndMatcher: PasswordEncoder,
