@@ -28,6 +28,8 @@ data class MonitorProperties(
         @DefaultValue("config/identity.bin")
         val identityFile: String,
 
+        val ignoredServergroups: List<Int>,
+
         val ports: Ts3PortsConfig,
         val login: Ts3LoginConfig) {
 

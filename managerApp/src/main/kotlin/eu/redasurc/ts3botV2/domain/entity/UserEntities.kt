@@ -1,5 +1,8 @@
 package eu.redasurc.ts3botV2.domain.entity
 
+import com.fasterxml.jackson.databind.JsonNode
+import com.fasterxml.jackson.databind.node.TextNode
+import eu.redasurc.ts3botV2.service.JsonPersistenceConverter
 import org.hibernate.envers.Audited
 import org.springframework.data.jpa.domain.AbstractAuditable
 import org.springframework.data.jpa.domain.support.AuditingEntityListener
@@ -21,8 +24,13 @@ open class User (
         @OneToOne(cascade = [CascadeType.ALL], orphanRemoval = true)
         open var clan: UserClanAssignment? = null,
 
-        @OneToMany(cascade = [CascadeType.ALL], orphanRemoval = true)
+        @OneToMany(cascade = [CascadeType.ALL], orphanRemoval = true, mappedBy = "user")
         open var identitys: MutableCollection<TS3Identity> = mutableListOf(),
+
+        @ElementCollection(fetch = FetchType.EAGER)
+        @Convert(converter = JsonPersistenceConverter::class, attributeName = "value")
+        @Lob
+        open var attributes: MutableMap<String, JsonNode> = mutableMapOf(),
 
         @Enumerated(EnumType.STRING)
         open var permission: ServerPermissions = ServerPermissions.MEMBER,
@@ -33,12 +41,15 @@ open class User (
 ) : AbstractAuditable<User, Long> () {
 
         // Secondary Constructor for Spring Security
-        constructor(user: User) : this(user.login, user.email, user.pw, user.clan, user.identitys, user.permission,
-                user.accountNonExpired, user.accountNonLocked, user.credentialsNonExpired, user.enabled)
+        constructor(user: User) : this(user.login, user.email, user.pw, user.clan, user.identitys, user.attributes,
+                user.permission, user.accountNonExpired, user.accountNonLocked, user.credentialsNonExpired, user.enabled)
 
         @Deprecated("Dummy constructor for Spring Data, DO NOT USE")
         constructor() : this(DUMMY_USER)
+
+
 }
+
 
 @Entity
 @Audited
@@ -73,6 +84,7 @@ class TS3Identity(
         @ManyToOne
         @JoinColumn
         var user: User,
+
         var lastConnected: Date? = null,
         var comment: String? = null
 ) : AbstractAuditable<User, Long> () {

@@ -20,11 +20,11 @@ class Clan(var name: String, leader: User) : AbstractAuditable<User, Long>() {
     @Where(clause = "position = 'ADMIN'")
     var leader: UserClanAssignment = UserClanAssignment(leader, this, ClanPosition.ADMIN)
 
-    @OneToMany(cascade = [CascadeType.ALL])
+    @OneToMany(cascade = [CascadeType.ALL], mappedBy = "clan")
     @Where(clause = "position = 'MOD'")
     var mods: MutableCollection<UserClanAssignment> = mutableListOf()
 
-    @OneToMany(cascade = [CascadeType.ALL])
+    @OneToMany(cascade = [CascadeType.ALL], mappedBy = "clan")
     @Where(clause = "position = 'MEMBER'")
     var member: MutableCollection<UserClanAssignment> = mutableListOf()
 
@@ -52,8 +52,7 @@ class UserClanAssignment (
             var clan: Clan,
 
             @Enumerated(EnumType.STRING)
-            var position: ClanPosition = ClanPosition.MEMBER,
-            var joined: Date = Date()
+            var position: ClanPosition = ClanPosition.MEMBER
         ) : AbstractAuditable<User, Long>() {
 
     @Deprecated("Dummy constructor for Spring Data, DO NOT USE")
