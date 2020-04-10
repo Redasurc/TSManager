@@ -25,7 +25,7 @@ data class MonitorProperties(
         @DefaultValue("TS Bot")
         val nicknameSQ: String,
 
-        @DefaultValue("identity.bin")
+        @DefaultValue("config/identity.bin")
         val identityFile: String,
 
         val ports: Ts3PortsConfig,
