@@ -67,6 +67,7 @@ enum class TokenType {
 @Audited
 @EntityListeners(AuditingEntityListener::class)
 class TS3Identity(
+        @Column(unique = true)
         val uuid: String,
 
         @ManyToOne
