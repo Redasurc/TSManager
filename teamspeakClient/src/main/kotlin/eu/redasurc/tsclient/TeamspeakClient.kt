@@ -4,6 +4,7 @@ import com.github.manevolent.ts3j.command.CommandException
 import com.github.manevolent.ts3j.identity.LocalIdentity
 import com.github.theholywaffle.teamspeak3.TS3Config
 import com.github.theholywaffle.teamspeak3.TS3Query
+import com.github.theholywaffle.teamspeak3.api.exception.TS3CommandFailedException
 import eu.redasurc.tsclient.TeamspeakClient.TsStatus.*
 import eu.redasurc.tsclient.TeamspeakClient.ConnectionStatus.*
 import org.slf4j.LoggerFactory
@@ -86,7 +87,11 @@ class TeamspeakClient (private val connectionSettings: ConnectionSettings) : Clo
         // Log in, select the right server and change the nickname
         sqClient.api.login(connectionSettings.login.squser, connectionSettings.login.pass)
         sqClient.api.selectVirtualServerByPort(connectionSettings.ports.udp)
-        sqClient.api.setNickname(connectionSettings.nicknameSQ)
+        try {
+            sqClient.api.setNickname(connectionSettings.nicknameSQ)
+        } catch (e: TS3CommandFailedException) {
+            log.error("Setting of nickname failed", e)
+        }
         log.info("Connection serverquery complete")
     }
     fun connectUdpClient() {

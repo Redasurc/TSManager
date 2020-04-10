@@ -32,6 +32,7 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-thymeleaf")
     implementation("org.springframework.boot:spring-boot-starter-mail")
     implementation("org.hibernate","hibernate-envers")
+    runtimeOnly("org.mariadb.jdbc:mariadb-java-client:2.6.0")
     runtimeOnly("com.h2database:h2:1.3.176")
 
     // Password strength estimation:
