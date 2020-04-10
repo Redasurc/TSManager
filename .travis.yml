@@ -20,7 +20,7 @@ cache:
     - $HOME/.gradle/wrapper/
 
 after_success:
-  - docker login docker.pkg.github.com -u $DOCKER_USER -p $DOCKER_PASS
+  - docker login -u $DOCKER_USER -p $DOCKER_PASS docker.pkg.github.com
   - export TAG=`if [ "$TRAVIS_BRANCH" == "master" ]; then echo "latest"; else echo $TRAVIS_BRANCH
     ; fi`
   - export IMAGE_NAME=docker.pkg.github.com/redasurc/tsmanager/ts-manager
