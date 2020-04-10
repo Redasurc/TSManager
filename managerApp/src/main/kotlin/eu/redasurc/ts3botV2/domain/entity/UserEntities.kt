@@ -10,7 +10,11 @@ import javax.persistence.*
 @Audited
 @EntityListeners(AuditingEntityListener::class)
 open class User (
+
+        @Column(unique = true)
         open var login: String,
+
+        @Column(unique = true)
         open var email: String,
         open var pw: String,
 

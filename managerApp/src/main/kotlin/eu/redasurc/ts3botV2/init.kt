@@ -41,6 +41,10 @@ class Initializer (@Autowired val userRepository: UserRepository,
 
     @PostConstruct
     fun init() {
+        userRepository.findOneByLoginIgnoreCase("admin")?.run {
+            return  // If admin exists skip this
+        }
+
         val user = User("admin", "admin@localhost", pwEncoder.encode("password"),
                 enabled = true, permission = ServerPermissions.SERVERADMIN)
         userRepository.save(user)
