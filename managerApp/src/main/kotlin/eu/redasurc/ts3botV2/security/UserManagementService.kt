@@ -159,6 +159,7 @@ class UserManagementService(@Autowired private val userRepository: UserRepositor
         if(!user.enabled) {
             user.enabled = true
         }
+        user.credentialsNonExpired = true
         userRepository.save(user)
         tokenRepository.delete(securityToken)
     }
