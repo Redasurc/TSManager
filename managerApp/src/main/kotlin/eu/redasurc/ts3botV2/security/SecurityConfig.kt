@@ -30,8 +30,7 @@ class WebSecurityConfiguration(private val customUserDetailsService: CustomUserD
         http
                 .csrf().disable()
                 .authorizeRequests()
-                    .antMatchers("/register").permitAll()
-                    .antMatchers("/confirm").permitAll()
+                    .antMatchers("/register", "/token", "/forgot-password/**").permitAll()
                     .antMatchers("/css/**", "/img/**", "/js/**","/vendor/**").permitAll()
                     .anyRequest().authenticated()
                     .and()
