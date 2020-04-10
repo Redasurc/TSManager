@@ -1,5 +1,6 @@
 package eu.redasurc.ts3botV2.security
 
+import eu.redasurc.ts3botV2.config.BruteForceSettings
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import java.util.*
@@ -8,30 +9,8 @@ data class LoginAttempt(val username: String, val ip: String, val timestamp: Dat
 
 // TODO: All check if blocked functions can be generalized
 @Service
-class BruteForceService {
+class BruteForceService (private val settings: BruteForceSettings){
     private val log = LoggerFactory.getLogger(this::class.java)
-
-    /** Require CAPTCHA for IP after ... failed attempts */
-    private val CAPTCHA_ATTEMPT_PER_ADDRESS = 2
-
-    /** Lock IP after ... failed attempts */
-
-    private val MAX_ATTEMPT_PER_ADDRESS = 20
-
-    /** Require CAPTCHA for USER after ... failed attempts */
-    private val CAPTCHA_ATTEMPT_PER_USER = 20
-
-    /** Lock USER after ... failed attempts */
-    private val MAX_ATTEMPT_PER_USER = 50
-
-    /** Counts registrations and forgot password calls per IP (Everything that sends an email) */
-    private val MAX_REGISTRATION_PER_ADDRESS = 10
-
-    /** Lock IP after ... failed token redemption attempts */
-    private val MAX_TOKEN_ATTEMPTS = 50
-
-    /** Max age of cached login attempt (in ms) */
-    private val MAX_AGE = 7200000 // 2 hours
 
     /** QUEUE with LoginAttempts */
     private val attempts: ArrayDeque<LoginAttempt> = ArrayDeque()
@@ -67,7 +46,7 @@ class BruteForceService {
     @Synchronized
     fun clearExpiredAttempts() {
         // Remove all entrys older than this expirationTimestamp
-        val expirationTimestamp = System.currentTimeMillis() - MAX_AGE
+        val expirationTimestamp = System.currentTimeMillis() - settings.maxAge
 
         // Iterate through all queues
         listOf(attempts, registrationAttempts, tokenAttempts).forEach {
@@ -86,12 +65,12 @@ class BruteForceService {
     fun isBlocked(remoteAddr: String): Boolean {
         clearExpiredAttempts()
         val count = attempts.filter { it.ip == remoteAddr }.count()
-        if(count >= MAX_ATTEMPT_PER_ADDRESS) {
+        if(count >= settings.maxAttemptPerAddress) {
             log.warn("$count recent login attempts from $remoteAddr, IP address is locked")
             return true
         }
-        if(count > MAX_ATTEMPT_PER_ADDRESS / 2) {
-            log.warn("$count recent login attempts from $remoteAddr, locking IP at $MAX_ATTEMPT_PER_ADDRESS attempts")
+        if(count > settings.maxAttemptPerAddress / 2) {
+            log.warn("$count recent login attempts from $remoteAddr, locking IP at ${settings.maxAttemptPerAddress} attempts")
         }
         return false
     }
@@ -103,12 +82,12 @@ class BruteForceService {
     fun isUserBlocked(username: String): Boolean {
         clearExpiredAttempts()
         val count = attempts.filter { it.username == username }.count()
-        if(count >= MAX_ATTEMPT_PER_USER) {
+        if(count >= settings.maxAttemptPerUser) {
             log.warn("$count recent login attempts for user $username, User is locked")
             return true
         }
-        if(count > MAX_ATTEMPT_PER_USER / 2) {
-            log.warn("$count recent login attempts for user $username, locking User at $MAX_ATTEMPT_PER_ADDRESS attempts")
+        if(count > settings.maxAttemptPerUser / 2) {
+            log.warn("$count recent login attempts for user $username, locking User at ${settings.maxAttemptPerUser} attempts")
         }
         return false
     }
@@ -120,9 +99,9 @@ class BruteForceService {
     fun isEnforcingCaptcha(remoteAddr: String, username: String? = null): Boolean {
         clearExpiredAttempts()
         val userEnforcing = username?.run {
-            attempts.filter { it.username == username }.count() > CAPTCHA_ATTEMPT_PER_USER } ?: false
+            attempts.filter { it.username == username }.count() > settings.captchaAttemptPerUser } ?: false
 
-        return attempts.filter { it.ip == remoteAddr }.count() > CAPTCHA_ATTEMPT_PER_ADDRESS || userEnforcing
+        return attempts.filter { it.ip == remoteAddr }.count() > settings.captchaAttemptPerAddress || userEnforcing
     }
 
 
@@ -136,7 +115,7 @@ class BruteForceService {
     fun isRegistrationLocked(remoteAddr: String): Boolean {
         clearExpiredAttempts()
         val count = registrationAttempts.filter { it.ip == remoteAddr }.count()
-        if(count >= MAX_REGISTRATION_PER_ADDRESS) {
+        if(count >= settings.maxRegistrationPerAddress) {
             log.warn("$count registration and/or pw resets from $remoteAddr, IP address is locked")
             return true
         }
@@ -146,7 +125,7 @@ class BruteForceService {
     fun isTokenLocked(remoteAddr: String): Boolean {
         clearExpiredAttempts()
         val count = tokenAttempts.filter { it.ip == remoteAddr }.count()
-        if(count >= MAX_TOKEN_ATTEMPTS) {
+        if(count >= settings.maxTokenAttempts) {
             log.warn("$count token redemption attempts from $remoteAddr, IP address is locked")
             return true
         }

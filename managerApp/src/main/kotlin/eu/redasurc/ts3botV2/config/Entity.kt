@@ -51,26 +51,26 @@ data class MonitorProperties(
 @ConstructorBinding
 @ConfigurationProperties("ts3manager.email")
 data class EmailProperties(
-        @DefaultValue("ts@bot.com")
-        val from: String,
+        @DefaultValue("ts@bot.local")
+        val from: String = "ts@bot.local",
 
         @DefaultValue("http://localhost:8080")
-        val appUrl: String,
+        val appUrl: String = "http://localhost:8080",
 
         @DefaultValue("TS Manager Registration")
-        val registrationSubject: String,
+        val registrationSubject: String = "TS Manager Registration",
 
         @DefaultValue("Hello {username},\n\nTo confirm your e-mail address, please click the link below:\n{token}\n\nYour Allround-Gaming Community")
-        val registrationMessage: String,
+        val registrationMessage: String = "Hello {username}\n Activation Link: {token}",
 
         @DefaultValue("TS Manager Password Reset")
-        val pwResetSubject: String,
+        val pwResetSubject: String = "TS Manager Password Reset",
 
         @DefaultValue("Hello {username},\n\nTo reset your password, please click the link below:\n{token}\n\nYour Allround-Gaming Community")
-        val pwResetMessage: String,
+        val pwResetMessage: String = "Hello {username}\n PW Reset Link: {token}",
 
         @DefaultValue("1209600") // 14 days - in seconds
-        val tokenMaxAge: Long)
+        val tokenMaxAge: Long = 1209600)
 
 
 
@@ -85,3 +85,34 @@ data class CaptchaSettings(
 
         @DefaultValue("")
         val secret: String)
+
+@ConstructorBinding
+@ConfigurationProperties("bruteforce")
+data class BruteForceSettings(
+        /** Require CAPTCHA for IP after ... failed attempts */
+        @DefaultValue("2")
+        val captchaAttemptPerAddress: Int,
+
+        /** Lock IP after ... failed attempts */
+        @DefaultValue("20")
+        val maxAttemptPerAddress: Int,
+
+        /** Require CAPTCHA for USER after ... failed attempts */
+        @DefaultValue("20")
+        val captchaAttemptPerUser: Int,
+
+        /** Lock USER after ... failed attempts */
+        @DefaultValue("50")
+        val maxAttemptPerUser: Int,
+
+        /** Counts registrations and forgot password calls per IP (Everything that sends an email) */
+        @DefaultValue("10")
+        val maxRegistrationPerAddress: Int,
+
+        /** Lock IP after ... failed token redemption attempts */
+        @DefaultValue("50")
+        val maxTokenAttempts: Int,
+
+        /** Max age of cached login attempt (in ms) */
+        @DefaultValue("7200000") // 2 hours
+        val maxAge: Int)

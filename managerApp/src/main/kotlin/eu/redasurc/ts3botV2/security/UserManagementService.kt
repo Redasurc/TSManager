@@ -7,11 +7,15 @@ import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.mail.MailSender
 import org.springframework.mail.SimpleMailMessage
+import org.springframework.scheduling.annotation.Scheduled
+import org.springframework.security.core.userdetails.UsernameNotFoundException
 import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.stereotype.Service
 import java.time.LocalDateTime
+import java.time.ZoneId
 import java.util.*
 import kotlin.concurrent.thread
+
 
 typealias Username = String
 typealias Password = String
@@ -23,14 +27,24 @@ class UserManagementService(@Autowired private val userRepository: UserRepositor
                             @Autowired private val mailSender: MailSender,
                             @Autowired private val mailProperties: EmailProperties){
     private val log = LoggerFactory.getLogger(this::class.java)
+
     /**
      * Check username & password
+     *
+     * @return true if pw matches, false if not.
+     * @throws UsernameNotFoundException if user cannot be found.
      */
+    @Throws(UsernameNotFoundException::class)
     fun bind(username: Username, password: Password) : Boolean {
-        val user = userRepository.findOneByLoginIgnoreCase(username) ?: throw RegistrationException("User not found")
+        val user = userRepository.findOneByLoginIgnoreCase(username) ?: throw UsernameNotFoundException("User not found")
         return pwEncoder.matches(password, user.pw)
     }
 
+    /**
+     * Register an user with given username, email and password
+     * @param appUrl Application url for the registration email. Will be taken from config if empty.
+     * @throws RegistrationException if registration encounters an error
+     */
     @Throws(RegistrationException::class)
     fun registerUser(_username: Username, _email: String, password: Password, appUrl: String? = null) {
         val username = _username.trim()
@@ -147,6 +161,20 @@ class UserManagementService(@Autowired private val userRepository: UserRepositor
         }
         userRepository.save(user)
         tokenRepository.delete(securityToken)
+    }
+
+    @Scheduled(cron = "0 15 05 * * ?") // everyday on 05:15
+    fun scheduleTaskUsingCronExpression() {
+        log.info("Cleaning up expired tokens and registrations")
+
+        // 3 times expiration time before deleting
+        val oldestDateToBeAccepted = Date.from(
+                LocalDateTime.now()
+                        .minusSeconds(mailProperties.tokenMaxAge * 3)
+                        .atZone(ZoneId.systemDefault()).toInstant())
+        val expiredToken = tokenRepository.findAllByCreatedDateBefore(oldestDateToBeAccepted)
+        tokenRepository.deleteAll(expiredToken)
+        log.info("Clean up removed ${expiredToken.size} expired tokens")
     }
 
 }
