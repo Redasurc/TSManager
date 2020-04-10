@@ -20,8 +20,11 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 class WebSecurityConfiguration(private val customUserDetailsService: CustomUserDetailsService,
                                private val passwordEncoderAndMatcher: PasswordEncoder,
                                private val captchaService: CaptchaService,
-                               private val bruteForceService: BruteForceService)
+                               private val bruteForceService: BruteForceService,
+                               private val userDetailService: CustomUserDetailsService)
     : WebSecurityConfigurerAdapter() {
+
+    private val authProvider = configAuthenticationProvider()
 
     override fun configure(http: HttpSecurity) {
         http
@@ -40,6 +43,7 @@ class WebSecurityConfiguration(private val customUserDetailsService: CustomUserD
                     .and()
                 .rememberMe()
                     .key("uniqueAndSecret")
+                    .userDetailsService(userDetailService)
                     .and()
                 .logout()
                     .deleteCookies("JSESSIONID")
@@ -47,11 +51,11 @@ class WebSecurityConfiguration(private val customUserDetailsService: CustomUserD
     }
 
     override fun configure(auth: AuthenticationManagerBuilder) {
-        auth.authenticationProvider(configAuthenticationProvider())
+        auth.authenticationProvider(authProvider)
     }
 
 
-    fun configAuthenticationProvider(): DaoAuthenticationProvider {
+    private final fun configAuthenticationProvider(): DaoAuthenticationProvider {
         val impl = DaoAuthenticationProvider()
         impl.setUserDetailsService(customUserDetailsService)
         impl.setPasswordEncoder(passwordEncoderAndMatcher)
