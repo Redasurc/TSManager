@@ -5,7 +5,7 @@ plugins {
 
 allprojects {
 
-	group = "eu.redasurc.tsmanager"
+	group = "eu.redasurc.tsm"
 	version = "0.0.4-SNAPSHOT"
 	repositories {
 		jcenter()
