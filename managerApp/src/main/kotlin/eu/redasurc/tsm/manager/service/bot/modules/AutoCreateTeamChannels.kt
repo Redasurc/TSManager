@@ -134,7 +134,8 @@ class AutoCreateTeamChannels : TSModule {
                 .filter { autocreatedTopic == it.channelTopic }
                 .filter { !nameList.values.contains(it.name) }
                 .filter { virtualTS.getClients(it).isEmpty() }
-                .forEach { try {api.deleteChannel(it.id)} catch(e: TS3CommandFailedException) {}}
+                .forEach { try {api.deleteChannel(it.id)
+                            } catch(e: TS3CommandFailedException) {log.debug("Failed to delete child channel", e)}}
 
         // Map with number of sub-channel to TSChannel object if exists
         val createdChannels =  nameList.map {

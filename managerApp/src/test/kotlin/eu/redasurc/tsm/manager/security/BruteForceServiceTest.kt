@@ -131,22 +131,4 @@ internal class BruteForceServiceTest {
         // Previous attempts should have timed out
         assertFalse(service.isBlocked(ip1))
     }
-
-
-
-    @Test
-    fun registrationAttempt() {
-    }
-
-    @Test
-    fun failedTokenAttempt() {
-    }
-
-    @Test
-    fun isRegistrationLocked() {
-    }
-
-    @Test
-    fun isTokenLocked() {
-    }
 }

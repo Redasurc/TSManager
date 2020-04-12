@@ -31,7 +31,7 @@ class CaptchaVerificationFilter(private val processUrl: String,
         val captchaShown = request.getParameter("captcha")?.equals("true")?:false
         val username : String? = request.getParameter("username")
         if (processUrl == req.servletPath && "POST".equals(req.method, ignoreCase = true)
-                && ((bruteForceService.isEnforcingCaptcha(getClientIP(request), username) || captchaShown))) {
+                && (bruteForceService.isEnforcingCaptcha(getClientIP(request), username) || captchaShown)) {
             val captcha = request.getParameter("g-recaptcha-response")
             try {
                 captchaService.processResponse(captcha)

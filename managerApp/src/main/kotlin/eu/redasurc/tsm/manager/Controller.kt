@@ -49,7 +49,7 @@ class CustomErrorController : ErrorController {
             code = status
             try {
                 message = HttpStatus.valueOf(status).reasonPhrase
-            } catch (e: IllegalArgumentException) {}
+            } catch (e: IllegalArgumentException) { log.debug("Parsing of {} as HTTP status code failed", status, e)}
             if (status == HttpStatus.NOT_FOUND.value()) {
                 message = "Page Not Found"
             } else if (status == HttpStatus.INTERNAL_SERVER_ERROR.value()) {

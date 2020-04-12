@@ -16,12 +16,14 @@ import org.junit.jupiter.api.Test
 
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.BeforeEach
+import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.mail.MailSender
 import org.springframework.security.core.userdetails.UsernameNotFoundException
 import org.springframework.security.crypto.password.PasswordEncoder
 
 internal class UserManagementServiceTest {
+    private val log = LoggerFactory.getLogger(this::class.java)
 
     lateinit var userRepository: UserRepository
     lateinit var tokenRepository: TokenRepository
@@ -74,28 +76,32 @@ internal class UserManagementServiceTest {
         try {
             userManagementService.registerUser("user", "test@test.local", "ASD")
             fail<String>("duplicate username registration allowed")
-        } catch (e: UsernameAlreadyRegisteredException) {}
+        } catch (e: UsernameAlreadyRegisteredException) {log.debug("",e)}
 
         // Existing email
         try {
             userManagementService.registerUser("test", "user@local", "ASD")
             fail<String>("duplicate username registration allowed")
-        } catch (e: EmailAlreadyRegisteredException) {}
+        } catch (e: EmailAlreadyRegisteredException) { log.debug("", e) }
     }
 
     @Test
     fun useToken() {
+        log.debug("Please implement")
     }
 
     @Test
     fun sendResetPwEmail() {
+        log.debug("Please implement")
     }
 
     @Test
     fun testSendResetPwEmail() {
+        log.debug("Please implement")
     }
 
     @Test
     fun resetPW() {
+        log.debug("Please implement")
     }
 }

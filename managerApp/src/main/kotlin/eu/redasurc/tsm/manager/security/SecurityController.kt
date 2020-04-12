@@ -241,7 +241,7 @@ class RegisterController (private val userManagementService: UserManagementServi
             modelAndView.addObject("errorMessage", "Invalid request.")
             return modelAndView
         }
-        
+
         checkPW(user) ?.run {
             modelAndView.addObject("errorMessage", this)
             bindingResult.reject("pw")
