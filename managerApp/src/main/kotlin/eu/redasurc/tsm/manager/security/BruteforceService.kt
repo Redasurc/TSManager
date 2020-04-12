@@ -9,7 +9,7 @@ data class LoginAttempt(val username: String, val ip: String, val timestamp: Dat
 
 // TODO: All check if blocked functions can be generalized
 @Service
-class BruteForceService (private val settings: _root_ide_package_.eu.redasurc.tsm.manager.config.BruteForceSettings){
+class BruteForceService (private val settings: BruteForceSettings){
     private val log = LoggerFactory.getLogger(this::class.java)
 
     /** QUEUE with LoginAttempts */

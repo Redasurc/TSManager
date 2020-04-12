@@ -1,7 +1,7 @@
 package eu.redasurc.tsm.manager.security
 
-import eu.redasurc.ts3botV2.security.captcha.CaptchaService
-import eu.redasurc.ts3botV2.security.captcha.CaptchaVerificationFilter
+import eu.redasurc.tsm.manager.security.captcha.CaptchaService
+import eu.redasurc.tsm.manager.security.captcha.CaptchaVerificationFilter
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider
@@ -34,7 +34,7 @@ class WebSecurityConfiguration(private val customUserDetailsService: CustomUserD
                 .csrf().disable()
                 .authorizeRequests()
                     .antMatchers("/register", "/token", "/forgot-password/**").permitAll()
-                    .antMatchers("/css/**", "/img/**", "/js/**","/vendor/**").permitAll()
+                    .antMatchers("/css/**", "/img/**", "/js/**","/vendor/**", "/dist/**").permitAll()
                     .anyRequest().authenticated()
                     .and()
                 .formLogin()

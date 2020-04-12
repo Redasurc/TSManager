@@ -8,10 +8,10 @@ import eu.redasurc.tsm.manager.config.EmailProperties
 import eu.redasurc.tsm.manager.domain.EmailAlreadyRegisteredException
 import eu.redasurc.tsm.manager.domain.RegistrationException
 import eu.redasurc.tsm.manager.domain.UsernameAlreadyRegisteredException
-import eu.redasurc.ts3botV2.domain.entity.SecurityToken
-import eu.redasurc.ts3botV2.domain.entity.TokenRepository
-import eu.redasurc.ts3botV2.domain.entity.User
-import eu.redasurc.ts3botV2.domain.entity.UserRepository
+import eu.redasurc.tsm.manager.domain.entity.SecurityToken
+import eu.redasurc.tsm.manager.domain.entity.TokenRepository
+import eu.redasurc.tsm.manager.domain.entity.User
+import eu.redasurc.tsm.manager.domain.entity.UserRepository
 import org.junit.jupiter.api.Test
 
 import org.junit.jupiter.api.Assertions.*
@@ -27,7 +27,7 @@ internal class UserManagementServiceTest {
     lateinit var tokenRepository: TokenRepository
     lateinit var pwEncoder: PasswordEncoder
     lateinit var mailSender: MailSender
-    lateinit var mailProperties: _root_ide_package_.eu.redasurc.tsm.manager.config.EmailProperties
+    lateinit var mailProperties: EmailProperties
     lateinit var userManagementService: UserManagementService
     @BeforeEach
     fun setup() {
@@ -37,7 +37,7 @@ internal class UserManagementServiceTest {
             on {encode(any())} doReturn "ENC-PW-HASH"
         }
         mailSender = mock {}
-        mailProperties = _root_ide_package_.eu.redasurc.tsm.manager.config.EmailProperties()
+        mailProperties = EmailProperties()
         userManagementService = UserManagementService(userRepository, tokenRepository,
                 pwEncoder, mailSender, mailProperties)
     }
@@ -74,13 +74,13 @@ internal class UserManagementServiceTest {
         try {
             userManagementService.registerUser("user", "test@test.local", "ASD")
             fail<String>("duplicate username registration allowed")
-        } catch (e: _root_ide_package_.eu.redasurc.tsm.manager.domain.UsernameAlreadyRegisteredException) {}
+        } catch (e: UsernameAlreadyRegisteredException) {}
 
         // Existing email
         try {
             userManagementService.registerUser("test", "user@local", "ASD")
             fail<String>("duplicate username registration allowed")
-        } catch (e: _root_ide_package_.eu.redasurc.tsm.manager.domain.EmailAlreadyRegisteredException) {}
+        } catch (e: EmailAlreadyRegisteredException) {}
     }
 
     @Test

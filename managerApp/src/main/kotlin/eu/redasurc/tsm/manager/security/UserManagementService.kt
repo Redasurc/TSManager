@@ -1,8 +1,8 @@
 package eu.redasurc.tsm.manager.security
 
 import eu.redasurc.tsm.manager.config.EmailProperties
-import eu.redasurc.ts3botV2.domain.*
-import eu.redasurc.ts3botV2.domain.entity.*
+import eu.redasurc.tsm.manager.domain.*
+import eu.redasurc.tsm.manager.domain.entity.*
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.mail.MailSender
@@ -25,7 +25,7 @@ class UserManagementService(@Autowired private val userRepository: UserRepositor
                             @Autowired private val tokenRepository: TokenRepository,
                             @Autowired private val pwEncoder: PasswordEncoder,
                             @Autowired private val mailSender: MailSender,
-                            @Autowired private val mailProperties: _root_ide_package_.eu.redasurc.tsm.manager.config.EmailProperties){
+                            @Autowired private val mailProperties: EmailProperties){
     private val log = LoggerFactory.getLogger(this::class.java)
 
     /**
@@ -45,17 +45,17 @@ class UserManagementService(@Autowired private val userRepository: UserRepositor
      * @param appUrl Application url for the registration email. Will be taken from config if empty.
      * @throws RegistrationException if registration encounters an error
      */
-    @Throws(_root_ide_package_.eu.redasurc.tsm.manager.domain.RegistrationException::class)
+    @Throws(RegistrationException::class)
     fun registerUser(_username: Username, _email: String, password: Password, appUrl: String? = null) {
         val username = _username.trim()
         val email = _email.trim().toLowerCase()
         userRepository.findOneByLoginIgnoreCase(username) ?.run {
             log.info("Username $username already in use")
-            throw _root_ide_package_.eu.redasurc.tsm.manager.domain.UsernameAlreadyRegisteredException("Username already in use")
+            throw UsernameAlreadyRegisteredException("Username already in use")
         }
         userRepository.findByEmailIgnoreCase(email) ?.run {
             log.info("Email $email already in use")
-            throw _root_ide_package_.eu.redasurc.tsm.manager.domain.EmailAlreadyRegisteredException("Email already in use")
+            throw EmailAlreadyRegisteredException("Email already in use")
         }
         // new user so we create user and send confirmation e-mail
         // Disable user until they click on confirmation link in email
@@ -64,9 +64,9 @@ class UserManagementService(@Autowired private val userRepository: UserRepositor
         sendActivationEmail(user, appUrl)
     }
 
-    @Throws(_root_ide_package_.eu.redasurc.tsm.manager.domain.TokenException::class)
+    @Throws(TokenException::class)
     fun useToken(token: String) : TokenType{
-        val securityToken = tokenRepository.findByToken(token) ?: throw _root_ide_package_.eu.redasurc.tsm.manager.domain.TokenException("Token unknown")
+        val securityToken = tokenRepository.findByToken(token) ?: throw TokenException("Token unknown")
 
         // Check if token too old and if, resend the activation email
         if(tokenExpired(securityToken)) {
@@ -80,7 +80,7 @@ class UserManagementService(@Autowired private val userRepository: UserRepositor
                 TokenType.PW_RESET_TOKEN -> sendResetPwEmail(user)
             }
 
-            throw _root_ide_package_.eu.redasurc.tsm.manager.domain.TokenExpiredException("Token expired")
+            throw TokenExpiredException("Token expired")
         }
         if(securityToken.type == TokenType.ACTIVATION_TOKEN) {
             securityToken.user.enabled = true
@@ -145,10 +145,10 @@ class UserManagementService(@Autowired private val userRepository: UserRepositor
 
     fun resetPW(token: String, pw: String) {
         val securityToken = tokenRepository.findByTokenAndType(token, TokenType.PW_RESET_TOKEN)
-                                                                    ?: throw _root_ide_package_.eu.redasurc.tsm.manager.domain.TokenException("Token unknown")
+                                                                    ?: throw TokenException("Token unknown")
         // Check if token too old
         if(tokenExpired(securityToken)) {
-            throw _root_ide_package_.eu.redasurc.tsm.manager.domain.TokenExpiredException("Token expired")
+            throw TokenExpiredException("Token expired")
         }
 
         val user = securityToken.user

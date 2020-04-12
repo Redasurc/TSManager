@@ -7,7 +7,7 @@ import org.junit.jupiter.api.Assertions.*
 
 internal class BruteForceServiceTest {
 
-    private val settings = _root_ide_package_.eu.redasurc.tsm.manager.config.BruteForceSettings(2, 4, 5,
+    private val settings = BruteForceSettings(2, 4, 5,
             9, 2, 2, 1000)
 
 

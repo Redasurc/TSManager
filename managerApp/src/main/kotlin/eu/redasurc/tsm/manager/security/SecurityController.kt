@@ -1,9 +1,9 @@
 package eu.redasurc.tsm.manager.security
 
-import eu.redasurc.ts3botV2.domain.*
+import eu.redasurc.tsm.manager.domain.*
 import eu.redasurc.tsm.manager.domain.dto.User
-import eu.redasurc.ts3botV2.domain.entity.TokenType
-import eu.redasurc.ts3botV2.security.captcha.CaptchaService
+import eu.redasurc.tsm.manager.domain.entity.TokenType
+import eu.redasurc.tsm.manager.security.captcha.CaptchaService
 import me.gosimple.nbvcxz.Nbvcxz
 import org.springframework.security.authentication.DisabledException
 import org.springframework.security.web.WebAttributes
@@ -35,7 +35,7 @@ class RegisterController (private val userManagementService: UserManagementServi
 
         request.getSession(false)?.getAttribute(WebAttributes.AUTHENTICATION_EXCEPTION)?.run {
             when(this) {
-                is _root_ide_package_.eu.redasurc.tsm.manager.domain.BruteForceException ->  model.addAttribute("errorMessage", this.message)
+                is BruteForceException ->  model.addAttribute("errorMessage", this.message)
                 is DisabledException -> model.addAttribute("errorMessage", "User not activated. Please check your email for the activation message.")
                 else -> {}
             }
@@ -46,7 +46,7 @@ class RegisterController (private val userManagementService: UserManagementServi
 
     // Return registration form template
     @RequestMapping(value = ["/register"], method = [RequestMethod.GET])
-    fun showRegistrationPage(modelAndView: ModelAndView, user: _root_ide_package_.eu.redasurc.tsm.manager.domain.dto.User?): ModelAndView {
+    fun showRegistrationPage(modelAndView: ModelAndView, user: User?): ModelAndView {
         modelAndView.addObject("captchaSettings", captchaService.captchaSettings)
         modelAndView.addObject("user", user)
         modelAndView.viewName = "security/register"
@@ -55,7 +55,7 @@ class RegisterController (private val userManagementService: UserManagementServi
 
     // Process form input data
     @RequestMapping(value = ["/register"], method = [RequestMethod.POST])
-    fun processRegistrationForm(modelAndView: ModelAndView, user: @Valid _root_ide_package_.eu.redasurc.tsm.manager.domain.dto.User?, bindingResult: BindingResult, request: HttpServletRequest): ModelAndView {
+    fun processRegistrationForm(modelAndView: ModelAndView, user: @Valid User?, bindingResult: BindingResult, request: HttpServletRequest): ModelAndView {
         modelAndView.viewName = "security/register"
         modelAndView.addObject("captchaSettings", captchaService.captchaSettings)
 
@@ -100,11 +100,11 @@ class RegisterController (private val userManagementService: UserManagementServi
 
         try {
             userManagementService.registerUser(username, email, user.pw!!)  // PW = null is caught by checkPW()
-        } catch (e: _root_ide_package_.eu.redasurc.tsm.manager.domain.EmailAlreadyRegisteredException) {
+        } catch (e: EmailAlreadyRegisteredException) {
             modelAndView.addObject("warningMessage", "Oops!  There is already a user registered with the email provided.")
             bindingResult.reject("email")
             return modelAndView
-        } catch (e: _root_ide_package_.eu.redasurc.tsm.manager.domain.UsernameAlreadyRegisteredException) {
+        } catch (e: UsernameAlreadyRegisteredException) {
             modelAndView.addObject("warningMessage", "Oops!  The username you've choosen is already taken.")
             bindingResult.reject("username")
             return modelAndView
@@ -140,10 +140,10 @@ class RegisterController (private val userManagementService: UserManagementServi
         // Try activate the user with the given token.
         val tokenType = try {
              userManagementService.useToken(token)
-        } catch (e: _root_ide_package_.eu.redasurc.tsm.manager.domain.TokenExpiredException) {
+        } catch (e: TokenExpiredException) {
             modelAndView.addObject("infoMessage", "Token has expired. We send you a new one per email.")
             return modelAndView
-        } catch (e: _root_ide_package_.eu.redasurc.tsm.manager.domain.TokenException) {
+        } catch (e: TokenException) {
             modelAndView.addObject("invalidToken", "Oops!  This is an invalid token link.")
             bruteForceService.failedTokenAttempt(getClientIP(request))
             return modelAndView
@@ -156,7 +156,7 @@ class RegisterController (private val userManagementService: UserManagementServi
             }
             TokenType.PW_RESET_TOKEN -> {
                 modelAndView.addObject("captchaSettings", captchaService.captchaSettings)
-                modelAndView.addObject("user", _root_ide_package_.eu.redasurc.tsm.manager.domain.dto.User())
+                modelAndView.addObject("user", User())
                 modelAndView.addObject("token", token)
                 modelAndView.viewName = "security/forgot-password-enter-new"
             }
@@ -172,7 +172,7 @@ class RegisterController (private val userManagementService: UserManagementServi
     //  ---- RESET PW -----
     // Return reset pw form template
     @RequestMapping(value = ["/forgot-password"], method = [RequestMethod.GET])
-    fun showResetPasswordPage(modelAndView: ModelAndView, user: _root_ide_package_.eu.redasurc.tsm.manager.domain.dto.User?): ModelAndView {
+    fun showResetPasswordPage(modelAndView: ModelAndView, user: User?): ModelAndView {
         modelAndView.addObject("captchaSettings", captchaService.captchaSettings)
         modelAndView.addObject("user", user)
         modelAndView.viewName = "security/forgot-password"
@@ -181,7 +181,7 @@ class RegisterController (private val userManagementService: UserManagementServi
 
     // Process form input data
     @RequestMapping(value = ["/forgot-password"], method = [RequestMethod.POST])
-    fun processResetPasswordRequest(modelAndView: ModelAndView, user: @Valid _root_ide_package_.eu.redasurc.tsm.manager.domain.dto.User?, bindingResult: BindingResult, request: HttpServletRequest): ModelAndView {
+    fun processResetPasswordRequest(modelAndView: ModelAndView, user: @Valid User?, bindingResult: BindingResult, request: HttpServletRequest): ModelAndView {
         modelAndView.viewName = "security/forgot-password"
         modelAndView.addObject("captchaSettings", captchaService.captchaSettings)
 
@@ -202,7 +202,7 @@ class RegisterController (private val userManagementService: UserManagementServi
         user?.email?.run {
             if (this.isNotBlank()) {
                 userManagementService.sendResetPwEmail(this)
-                modelAndView.addObject("user", _root_ide_package_.eu.redasurc.tsm.manager.domain.dto.User())
+                modelAndView.addObject("user", User())
                 modelAndView.addObject("successMessage", "Mail send.")
                 return modelAndView
             }
@@ -218,7 +218,7 @@ class RegisterController (private val userManagementService: UserManagementServi
     }
 
     @RequestMapping(value = ["/forgot-password/change"], method = [RequestMethod.POST])
-    fun processResetPasswordForm(modelAndView: ModelAndView, user: @Valid _root_ide_package_.eu.redasurc.tsm.manager.domain.dto.User?,
+    fun processResetPasswordForm(modelAndView: ModelAndView, user: @Valid User?,
                                  @RequestParam("token") token: String?,
                                  bindingResult: BindingResult, request: HttpServletRequest): ModelAndView {
         modelAndView.viewName = "security/forgot-password-enter-new"
@@ -249,10 +249,10 @@ class RegisterController (private val userManagementService: UserManagementServi
         }
         try {
             userManagementService.resetPW(token, user.pw!!) // PW null check in checkPW()
-        } catch (e: _root_ide_package_.eu.redasurc.tsm.manager.domain.TokenExpiredException) {
+        } catch (e: TokenExpiredException) {
             modelAndView.addObject("errorMessage", "Token expired, please request a new password reset link.")
             return modelAndView
-        } catch (e: _root_ide_package_.eu.redasurc.tsm.manager.domain.TokenException) {
+        } catch (e: TokenException) {
             modelAndView.addObject("errorMessage", "Token not found")
             bruteForceService.failedTokenAttempt(getClientIP(request))
             return modelAndView
@@ -269,7 +269,7 @@ class RegisterController (private val userManagementService: UserManagementServi
      *
      * @return Error message or null if everything checks out
      */
-    private fun checkPW(user: _root_ide_package_.eu.redasurc.tsm.manager.domain.dto.User) : String? {
+    private fun checkPW(user: User) : String? {
         with(user) {
             if (pw.isNullOrBlank() || pwConfirm.isNullOrBlank()) {
                 return "No password given."

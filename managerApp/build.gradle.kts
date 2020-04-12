@@ -38,6 +38,16 @@ dependencies {
     // Password strength estimation:
     implementation("me.gosimple", "nbvcxz", "1.4.3")
 
+
+    // Webjars (Weblibs)
+    implementation("org.webjars:font-awesome:5.13.0")
+    implementation("org.webjars:jquery-easing:1.4.1")
+    implementation("org.webjars.bower:startbootstrap-sb-admin-2:4.0.7") { // Template
+        exclude("org.webjars.bower","jquery.easing")
+        exclude("org.webjars.bower","fortawesome__fontawesome-free")
+
+    }
+
     developmentOnly("org.springframework.boot:spring-boot-devtools")
     testImplementation("org.springframework.boot:spring-boot-starter-test") {
         exclude("org.junit.vintage", "junit-vintage-engine")

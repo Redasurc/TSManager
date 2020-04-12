@@ -42,7 +42,7 @@ class CustomAuthenticationFailureHandler: SimpleUrlAuthenticationFailureHandler(
 
         super.onAuthenticationFailure(request, response, exception)
 
-        if (exception is _root_ide_package_.eu.redasurc.tsm.manager.domain.BruteForceException) {
+        if (exception is BruteForceException) {
             request!!.session.setAttribute(WebAttributes.AUTHENTICATION_EXCEPTION, exception.message)
         }
     }

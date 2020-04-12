@@ -30,8 +30,8 @@ data class MonitorProperties(
 
         val ignoredServergroups: List<Int>,
 
-        val ports: _root_ide_package_.eu.redasurc.tsm.manager.config.MonitorProperties.Ts3PortsConfig,
-        val login: _root_ide_package_.eu.redasurc.tsm.manager.config.MonitorProperties.Ts3LoginConfig) {
+        val ports: Ts3PortsConfig,
+        val login: Ts3LoginConfig) {
 
     data class Ts3PortsConfig(
             @DefaultValue("9987")

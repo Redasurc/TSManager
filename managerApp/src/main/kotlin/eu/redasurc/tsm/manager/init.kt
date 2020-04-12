@@ -1,17 +1,12 @@
 package eu.redasurc.tsm.manager
 
-import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
-import com.fasterxml.jackson.module.kotlin.treeToValue
 import eu.redasurc.tsm.manager.config.BruteForceSettings
 import eu.redasurc.tsm.manager.config.CaptchaSettings
 import eu.redasurc.tsm.manager.config.EmailProperties
 import eu.redasurc.tsm.manager.config.MonitorProperties
-import eu.redasurc.ts3botV2.domain.entity.ClanRepository
-import eu.redasurc.ts3botV2.domain.entity.ServerPermissions
-import eu.redasurc.ts3botV2.domain.entity.User
-import eu.redasurc.ts3botV2.domain.entity.UserRepository
-import eu.redasurc.ts3botV2.service.bot.modules.UserRankAttributes
+import eu.redasurc.tsm.manager.domain.entity.ServerPermissions
+import eu.redasurc.tsm.manager.domain.entity.User
+import eu.redasurc.tsm.manager.domain.entity.UserRepository
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.Banner
 import org.springframework.boot.autoconfigure.SpringBootApplication
@@ -28,8 +23,8 @@ import javax.transaction.Transactional
 @SpringBootApplication
 @EnableJpaAuditing
 @EnableScheduling
-@EnableConfigurationProperties(_root_ide_package_.eu.redasurc.tsm.manager.config.MonitorProperties::class, _root_ide_package_.eu.redasurc.tsm.manager.config.EmailProperties::class,
-        _root_ide_package_.eu.redasurc.tsm.manager.config.CaptchaSettings::class, _root_ide_package_.eu.redasurc.tsm.manager.config.BruteForceSettings::class)
+@EnableConfigurationProperties(MonitorProperties::class, EmailProperties::class,
+        CaptchaSettings::class, BruteForceSettings::class)
 class TS3Bot
 
 fun main(args: Array<String>) {

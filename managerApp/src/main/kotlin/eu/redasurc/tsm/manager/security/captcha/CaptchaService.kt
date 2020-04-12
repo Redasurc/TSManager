@@ -2,7 +2,7 @@ package eu.redasurc.tsm.manager.security.captcha
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties
 import eu.redasurc.tsm.manager.config.CaptchaSettings
-import eu.redasurc.ts3botV2.security.getClientIP
+import eu.redasurc.tsm.manager.security.getClientIP
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.util.StringUtils
@@ -21,7 +21,7 @@ data class GoogleResponse(var success: Boolean = false, var quote: String = "")
 
 @Service
 class CaptchaService(val request: HttpServletRequest,
-                     val captchaSettings: _root_ide_package_.eu.redasurc.tsm.manager.config.CaptchaSettings,
+                     val captchaSettings: CaptchaSettings,
                      val restTemplate: RestTemplate)  {
 
 

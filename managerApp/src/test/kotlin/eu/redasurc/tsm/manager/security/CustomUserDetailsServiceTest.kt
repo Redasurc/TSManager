@@ -5,8 +5,8 @@ import com.nhaarman.mockitokotlin2.doReturn
 import com.nhaarman.mockitokotlin2.doReturnConsecutively
 import com.nhaarman.mockitokotlin2.mock
 import eu.redasurc.tsm.manager.domain.BruteForceException
-import eu.redasurc.ts3botV2.domain.entity.User
-import eu.redasurc.ts3botV2.domain.entity.UserRepository
+import eu.redasurc.tsm.manager.domain.entity.User
+import eu.redasurc.tsm.manager.domain.entity.UserRepository
 import org.junit.jupiter.api.Test
 
 import org.junit.jupiter.api.Assertions.*
@@ -44,21 +44,21 @@ internal class CustomUserDetailsServiceTest {
             fail<String>("Unknown user should throw authentication exception")
         } catch (e: Exception) {
             assertTrue(e is UsernameNotFoundException)
-            assertFalse(e is _root_ide_package_.eu.redasurc.tsm.manager.domain.BruteForceException)
+            assertFalse(e is BruteForceException)
         }
         // test user blocked
         try {
             service.loadUserByUsername("userBlocked")
             fail<String>("Blocked user should throw BruteForceException")
         } catch (e: Exception) {
-            assertTrue(e is _root_ide_package_.eu.redasurc.tsm.manager.domain.BruteForceException)
+            assertTrue(e is BruteForceException)
         }
         // test ip blocked
         try {
             service.loadUserByUsername("test")
             fail<String>("Blocked IP should throw BruteForceException")
         } catch (e: Exception) {
-            assertTrue(e is _root_ide_package_.eu.redasurc.tsm.manager.domain.BruteForceException)
+            assertTrue(e is BruteForceException)
         }
 
 

@@ -1,7 +1,7 @@
 package eu.redasurc.tsm.manager.security.captcha
 
-import eu.redasurc.ts3botV2.security.BruteForceService
-import eu.redasurc.ts3botV2.security.getClientIP
+import eu.redasurc.tsm.manager.security.BruteForceService
+import eu.redasurc.tsm.manager.security.getClientIP
 import org.springframework.security.authentication.InsufficientAuthenticationException
 import org.springframework.security.core.Authentication
 import org.springframework.security.core.AuthenticationException

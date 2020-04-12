@@ -1,8 +1,7 @@
 package eu.redasurc.tsm.manager.domain.entity
 
 import com.fasterxml.jackson.databind.JsonNode
-import com.fasterxml.jackson.databind.node.TextNode
-import eu.redasurc.ts3botV2.service.JsonPersistenceConverter
+import eu.redasurc.tsm.manager.service.JsonPersistenceConverter
 import org.hibernate.envers.Audited
 import org.springframework.data.jpa.domain.AbstractAuditable
 import org.springframework.data.jpa.domain.support.AuditingEntityListener
@@ -22,7 +21,7 @@ open class User (
         open var pw: String,
 
         @OneToOne(cascade = [CascadeType.ALL], orphanRemoval = true)
-        open var clan: _root_ide_package_.eu.redasurc.tsm.manager.domain.entity.UserClanAssignment? = null,
+        open var clan: UserClanAssignment? = null,
 
         @OneToMany(cascade = [CascadeType.ALL], orphanRemoval = true, mappedBy = "user")
         open var identitys: MutableCollection<TS3Identity> = mutableListOf(),

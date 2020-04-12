@@ -1,6 +1,6 @@
 package eu.redasurc.tsm.manager
 
-import eu.redasurc.ts3botV2.security.getClientIP
+import eu.redasurc.tsm.manager.security.getClientIP
 import org.bouncycastle.util.encoders.Base64
 import org.slf4j.LoggerFactory
 import org.springframework.boot.web.servlet.error.ErrorController

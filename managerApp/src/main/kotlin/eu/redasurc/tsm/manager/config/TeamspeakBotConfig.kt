@@ -12,7 +12,7 @@ import org.springframework.context.annotation.Configuration
 class TeamspeakBotConfig {
 
     @Bean
-    fun tsClient(@Autowired monProp : _root_ide_package_.eu.redasurc.tsm.manager.config.MonitorProperties, @Autowired modules: List<TSModule>): TeamspeakClient {
+    fun tsClient(@Autowired monProp : MonitorProperties, @Autowired modules: List<TSModule>): TeamspeakClient {
         val conSettings = ConnectionSettings(monProp.server, monProp.channel, monProp.botGroup, monProp.login.pass)
         val init = TeamspeakClient(conSettings)
         init.registerModules(modules)

@@ -4,3 +4,4 @@ build/
 .gradle/
 /out/
 /config/
+/*/out
