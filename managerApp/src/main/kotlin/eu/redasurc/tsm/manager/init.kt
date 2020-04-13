@@ -1,5 +1,8 @@
 package eu.redasurc.tsm.manager
 
+import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import com.fasterxml.jackson.module.kotlin.readValue
+import com.fasterxml.jackson.module.kotlin.treeToValue
 import eu.redasurc.tsm.manager.config.BruteForceSettings
 import eu.redasurc.tsm.manager.config.CaptchaSettings
 import eu.redasurc.tsm.manager.config.EmailProperties
@@ -7,6 +10,7 @@ import eu.redasurc.tsm.manager.config.MonitorProperties
 import eu.redasurc.tsm.manager.domain.entity.ServerPermissions
 import eu.redasurc.tsm.manager.domain.entity.User
 import eu.redasurc.tsm.manager.domain.entity.UserRepository
+import eu.redasurc.tsm.manager.service.bot.modules.UserRankAttributes
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.Banner
 import org.springframework.boot.autoconfigure.SpringBootApplication
@@ -18,6 +22,7 @@ import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.stereotype.Service
 import javax.annotation.PostConstruct
 import javax.transaction.Transactional
+import kotlin.system.measureTimeMillis
 
 
 @SpringBootApplication
@@ -42,19 +47,24 @@ class Initializer (@Autowired val userRepository: UserRepository,
     @PostConstruct
     @Transactional
     fun init() {
-//        println("Teamspeak points:")
-//        userRepository.findAll().forEach {user ->
-//            user.attributes["RankAttributes"] ?. run {
-//                val attr = jacksonObjectMapper().treeToValue<UserRankAttributes>(this) ?: run {
-//                    println("Deserializion for user ${user.login} failed, skipping...")
-//                    return@forEach
-//                }
-//                println("${user.login} has ${attr.points} Teamspeak Points.")
-//                return@forEach
-//            }
-//            println("No RankAttr object for user ${user.login}, skipping...")
-//        }
+        println("Teamspeak points:")
 
+        var num = 0;
+        println("Finished Query in " + measureTimeMillis {
+            num = userRepository.findAll().count()
+        } + " and found $num entries")
+
+        var de = 0
+        val objectMapper = jacksonObjectMapper()
+        println("Finished in " + measureTimeMillis {
+            userRepository.getAttributesForAllUsers("RankAttributes").forEach {attrObj ->
+                val attr = objectMapper.readValue<UserRankAttributes>(attrObj.data) ?: run {
+                    println("Deserializion for user ${attrObj.user.login} failed, skipping...")
+                    return@forEach
+                }
+                println("${attrObj.user.login} has ${attr.points} Teamspeak Points.")
+            }
+        } + " and deserialized $de entries")
         userRepository.findOneByLoginIgnoreCase("admin")?.run {
             return  // If admin exists skip this
         }

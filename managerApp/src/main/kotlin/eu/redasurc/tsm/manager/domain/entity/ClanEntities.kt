@@ -43,17 +43,17 @@ class Clan(var name: String, leader: User) : AbstractAuditable<User, Long>() {
 @Audited
 @EntityListeners(AuditingEntityListener::class)
 class UserClanAssignment (
-        @OneToOne
-            @JoinColumn
-            var user: User,
+        @OneToOne(fetch = FetchType.LAZY)
+        @JoinColumn
+        var user: User,
 
         @ManyToOne
-            @JoinColumn
-            var clan: Clan,
+        @JoinColumn
+        var clan: Clan,
 
         @Enumerated(EnumType.STRING)
-            var position: ClanPosition = ClanPosition.MEMBER
-        ) : AbstractAuditable<User, Long>() {
+        var position: ClanPosition = ClanPosition.MEMBER
+    ) : AbstractAuditable<User, Long>() {
 
     @Deprecated("Dummy constructor for Spring Data, DO NOT USE")
     constructor() : this(DUMMY_USER, DUMMY_CLAN)

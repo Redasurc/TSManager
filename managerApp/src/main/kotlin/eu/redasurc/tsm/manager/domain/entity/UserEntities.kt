@@ -1,6 +1,7 @@
 package eu.redasurc.tsm.manager.domain.entity
 
 import com.fasterxml.jackson.databind.JsonNode
+import com.fasterxml.jackson.databind.node.TextNode
 import eu.redasurc.tsm.manager.service.JsonPersistenceConverter
 import org.hibernate.envers.Audited
 import org.springframework.data.jpa.domain.AbstractAuditable
@@ -20,16 +21,16 @@ open class User (
         open var email: String,
         open var pw: String,
 
-        @OneToOne(cascade = [CascadeType.ALL], orphanRemoval = true)
+        @OneToOne(cascade = [CascadeType.ALL], orphanRemoval = true, fetch = FetchType.LAZY)
         open var clan: UserClanAssignment? = null,
 
         @OneToMany(cascade = [CascadeType.ALL], orphanRemoval = true, mappedBy = "user")
         open var identitys: MutableCollection<TS3Identity> = mutableListOf(),
 
-        @ElementCollection(fetch = FetchType.EAGER)
-        @Convert(converter = JsonPersistenceConverter::class, attributeName = "value")
-        @Lob
-        open var attributes: MutableMap<String, JsonNode> = mutableMapOf(),
+//        @ElementCollection(fetch = FetchType.EAGER)
+//        @Convert(converter = JsonPersistenceConverter::class, attributeName = "value")
+//        @Lob
+//        open var attributes: MutableMap<String, JsonNode> = mutableMapOf(),
 
         @Enumerated(EnumType.STRING)
         open var permission: ServerPermissions = ServerPermissions.MEMBER,
@@ -40,16 +41,14 @@ open class User (
 ) : AbstractAuditable<User, Long> () {
 
         // Secondary Constructor for Spring Security
-        constructor(user: User) : this(user.login, user.email, user.pw, user.clan, user.identitys, user.attributes,
-                user.permission, user.accountNonExpired, user.accountNonLocked, user.credentialsNonExpired, user.enabled)
+        constructor(user: User) : this(user.login, user.email, user.pw, user.clan, user.identitys, user.permission,
+                user.accountNonExpired, user.accountNonLocked, user.credentialsNonExpired, user.enabled)
 
         @Deprecated("Dummy constructor for Spring Data, DO NOT USE")
         constructor() : this(DUMMY_USER)
 
 
 }
-
-
 @Entity
 @Audited
 @EntityListeners(AuditingEntityListener::class)
@@ -66,6 +65,29 @@ class SecurityToken(
 ) : AbstractAuditable<User, Long> () {
         @Deprecated("Dummy constructor for Spring Data, DO NOT USE")
         constructor() : this("", DUMMY_USER, TokenType.ACTIVATION_TOKEN)
+}
+
+
+@Entity
+@Audited
+@EntityListeners(AuditingEntityListener::class)
+@Table(uniqueConstraints = [ UniqueConstraint(columnNames = ["user_id","attributes_key"])])
+class UserAttributes(
+        @ManyToOne
+        @JoinColumn(name = "user_id")
+        var user: User,
+
+        @Column(name = "attributes_key")
+        var key: String,
+
+        @Lob
+        @Column(name = "attributes")
+//        @Convert(converter = JsonPersistenceConverter::class)
+        var data: String
+
+) : AbstractAuditable<User, Long> () {
+        @Deprecated("Dummy constructor for Spring Data, DO NOT USE")
+        constructor() : this(DUMMY_USER, "", "{}")
 }
 enum class TokenType {
         ACTIVATION_TOKEN,
